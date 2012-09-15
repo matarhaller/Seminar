@@ -56,6 +56,14 @@ def test_1():
 def test_2():
 	assert calculate("what was the unix time of elvis's birth?") == '-1103904000 (Unix time)'
 
+def test_3():
+	assert calculate('what is meaning of life, the universe, and everything???')
+
+def test_4():
+	assert calculate("when is obama's wedding anniversary?") == "Wolfram Alpha doesn't know the answer. Please try a different question"
+
+def test_5():
+	assert calculate("(234*88)/0") == "infinity^~"
 
 if __name__ == "__main__":
 	parser = argparse.ArgumentParser(description = "CalCalc from command line")
