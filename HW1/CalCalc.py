@@ -57,8 +57,8 @@ def test_2():
 	assert calculate("what was the unix time of elvis's birth?") == '-1103904000 (Unix time)'
 
 def test_3():
-	assert calculate('what is meaning of life, the universe, and everything???')
-
+	assert calculate(calculate("what is 5*5") + "+" + calculate("what is 8*1")) == 33
+	
 def test_4():
 	assert calculate("when is obama's wedding anniversary?") == "Wolfram Alpha doesn't know the answer. Please try a different question"
 
