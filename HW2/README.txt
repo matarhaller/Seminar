@@ -6,3 +6,8 @@ To run hw:
 run HW2_v1.py
 answer_hw()
 
+
+Problems =
+I am unable to resize my figure (so you'll need to stretch it out to see the brain and the traces side by side). I still need to remove the tick marks from the brain axes.
+
+Didn't get to brushing …

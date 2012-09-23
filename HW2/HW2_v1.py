@@ -1,7 +1,12 @@
 from __future__ import division
 import numpy as np
 import matplotlib.pyplot as plt
+#import matplotlib.cbook as cbook
+import Image
+from matplotlib import _png
+from matplotlib.offsetbox import OffsetImage
 import scipy.io
+import pylab
 
 #for question 1 (my data)
 def resample(ms,srate):
@@ -18,10 +23,11 @@ def formatdata(data,Params):
 		mndata.update({Params["conditions"][k]: {'data' : data[0,k].mean(axis = 0), 'cmax' : conditionmean.max(), 'cmin' : conditionmean.min()}})
 	return mndata
 
-def traces(mndata,Params,srate):
+def traces(mndata,Params,srate,imagepath):
 	"""
-	plots traces of high gamma data for the trial duration. separated by condition
+	plots traces of high gamma data for the trial duration. separated by condition, with brain & elec position
 	"""
+	#plot high gamma traces
 	#data should be bandpassed (todo)
 	#resample to srate
 	st = resample(Params["st"],srate)
@@ -31,26 +37,52 @@ def traces(mndata,Params,srate):
 	plot_tp = resample(Params["plot"],srate)
 	cue = resample(500,srate)
 	
-	colors = ['blue','green','orange','red']
+	colors = ['red','orange','green','blue']
 	x = np.array(range(st,en+1))
-	f, ax = plt.subplots()
+	f, (ax,ax2) = plt.subplots(1,2, sharex = False)
 	ax.axhline(y = 0,color = 'k',linewidth=2)
 	ax.axvline(x = 0,color='k',linewidth=2)
-	
+	ax.axvline(x = cue,color = 'gray',linewidth = 2)
+	ax.axvline(x = cue+cue,color = 'gray',linewidth = 2)
+	ax.axvspan(cue, cue+cue, facecolor='0.5', alpha=0.25,label = 'cue')
+
 	for j in range(len(Params["conditions"])):
 		condition = Params['conditions'][j]
 		y = mndata[condition]['data']
 		ax.plot(x,y, label = condition,linewidth = 2,color = colors[j])
-		ax.plot((st, en), (0,0),'k',linewidth = 2)
-	ax.autoscale(tight=True)
-	ax.legend()
-	ax.xaxis.set_minor_locator(plt.MultipleLocator(resample(250,srate)))
-	ax.xaxis.set_major_locator(plt.MultipleLocator(resample(500,srate)))
-	ax.xaxis.set_ticklabels(['0', '500', '1000', '2000', '3000'],minor=False)
+	
+	ax.set_ylim((-30,85))
 	ax.set_xlim(st,en)
-	plt.xlabel("time (ms)")
-	plt.ylabel("% change baseline")
-	plt.title('Analytic Amplitude - High Gamma (70-150Hz)', fontsize = 18)
+	ax.legend()
+	ax.xaxis.set_ticklabels(['', '0', '','500', '', '1000', '', '1500', '', '2000','','2500','', '3000'],minor=False)
+	ax.xaxis.set_ticks(range(st,en,plot_tp))
+
+	ax.set_xlabel("time (ms)")
+	ax.set_ylabel("% change baseline")
+	ax.set_title('Analytic Amplitude - High Gamma (70-150Hz)', fontsize = 18)
+
+	#plot brain with elec location
+	#brain = plt.imread(imagepath)
+	#aa = pylab.mean(brain,2)
+	#ax2.imshow(aa)
+	#a2.gray()
+
+	#brain = Image.open(imagepath)
+	#ax2.set_axis_off()
+	#im = plt.imshow(brain, origin = 'lower')
+
+	#brain = _png.read_png(imagepath)
+	#imagebox = OffsetImage(brain,zoom =5)
+	#ab = AnnotationBbox(imagebox,)
+
+	im = Image.open(imagepath)
+	ax2.imshow(im,aspect = 'auto',origin = 'lower')
+	ax2.set_xlim((0,750))
+	ax2.set_title('Electrode Location',fontsize = 18)
+
+
+
+	return f, (ax, ax2)
 
 
 #for question 2 (stocks data)
@@ -91,7 +123,7 @@ def plotstocksdata(datadict,formats):
 	plt.title('New York Temperature, Google, and Yahoo!', fontname = 'serif',fontsize = 18)
 	plts = yahoo+google+nytmp
 	labels = [l.get_label() for l in plts]
-	ax1.legend(plts, labels, loc=(0.05,0.5) ,frameon=False, prop={'size':11}, markerscale = 2)
+	ax1.legend(plts, labels, loc=(0.025,0.5) ,frameon=False, prop={'size':11}, markerscale = 2)
 	plt.show()
 
 
@@ -99,7 +131,7 @@ def answer_hw():
 	#QUESTION 1
 	#load data
 	dataDir = "/Users/matar/Documents/Courses/PythonClass/HW2/data/"
-
+	imagepath = dataDir + 'e37.png'
 	matdata = scipy.io.loadmat(dataDir+'TrialsMTX',struct_as_record = True)
 	data = matdata["TrialsMTX"]['data'][0,0]
 
@@ -114,11 +146,13 @@ def answer_hw():
 	print '-'*40
 	print "question 1 : plotting traces"
 	print '-'*40
-	traces(mndata,Params,srate)
-	
+	traces(mndata,Params,srate,imagepath) 
+	#ideally would like to separate the traces func from the brain image, but can't figure out how to plot 2 funcs as subplots of same image
+
+
 	#QUESTION 2
 	formats = {'google' : 'b', 'nytmp' : 'r--', 'yahoo' :'purple'}
-	dataDir = "/Users/matar/Documents/Courses/PythonClass/HW2/homework2_data/"
+	dataDir = "/Users/matar/Documents/Courses/PythonClass/HW2/hw2_data/"
 	datadict = {'nytmp': readdata(dataDir+'ny_temps.txt'), 'google': readdata(dataDir+'google_data.txt'), 'yahoo': readdata(dataDir+'yahoo_data.txt')}
 	print '-'*40
 	print "question 2 : plotting stock data"
