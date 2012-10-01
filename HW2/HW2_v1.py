@@ -115,7 +115,7 @@ def plotstocksdata(datadict,formats):
 	ax1.yaxis.set_minor_locator(plt.MultipleLocator(20))
 	ax1.set_xlim((48800, 55600))
 	ax1.xaxis.set_minor_locator(plt.MultipleLocator(200))
-	plt.show()
+	#plt.show()  #ISAAC EDIT
 	ax2.set_ylim((-150, 100))
 	ax2.set_ylim((-150, 100))
 	ax2.set_ylabel('Temperature  ($^\circ$F)')
@@ -130,7 +130,8 @@ def plotstocksdata(datadict,formats):
 def answer_hw():
 	#QUESTION 1
 	#load data
-	dataDir = "/Users/matar/Documents/Courses/PythonClass/HW2/data/"
+	#dataDir = "/Users/matar/Documents/Courses/PythonClass/HW2/data/"
+	dataDir = "data/"  #ISAAC EDIT
 	imagepath = dataDir + 'e37.png'
 	matdata = scipy.io.loadmat(dataDir+'TrialsMTX',struct_as_record = True)
 	data = matdata["TrialsMTX"]['data'][0,0]
@@ -152,7 +153,8 @@ def answer_hw():
 
 	#QUESTION 2
 	formats = {'google' : 'b', 'nytmp' : 'r--', 'yahoo' :'purple'}
-	dataDir = "/Users/matar/Documents/Courses/PythonClass/HW2/hw2_data/"
+	#dataDir = "/Users/matar/Documents/Courses/PythonClass/HW2/hw2_data/"
+	dataDir = "hw2_data/"   #ISAAC EDIT
 	datadict = {'nytmp': readdata(dataDir+'ny_temps.txt'), 'google': readdata(dataDir+'google_data.txt'), 'yahoo': readdata(dataDir+'yahoo_data.txt')}
 	print '-'*40
 	print "question 2 : plotting stock data"
