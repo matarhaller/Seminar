@@ -1,0 +1,13 @@
+This is one example of a solution to Python for Science HW0: bears.
+
+There are two files: bears.py and answers.py
+bears.py:
+ - contains bear class, an individual
+answers.py:
+ - manages a population of bears, and answers the HW questions.
+ - can be run from a command line:
+   $ python answers.py
+
+
+TO DO:
+ - could be much faster

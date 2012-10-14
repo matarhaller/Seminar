@@ -1,0 +1,10 @@
+This is a solution to the brushing problem, written by 
+Josh Bloom for the PySci class.
+
+To use:
+$ python brush.py
+
+or, within python:
+>>> import brush
+>>> brush.test1()
+>>> brush.test2()

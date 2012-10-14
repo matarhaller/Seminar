@@ -1,0 +1,13 @@
+This is a solution to the brushing problem for
+PySci Fall 2012 homework 2.
+
+brushing.py contains a brush class that can accept any
+properly-formatted figure and interactively brush it.
+
+an example, using iris.data, is contained in example_brush.py
+
+Click and drag to create a brush, and just click to clear current brush.
+
+to run it:
+$ python example_brush.py
+
