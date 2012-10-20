@@ -44,8 +44,8 @@ def get_edges(img):
 
 def get_segments(img):
 	markers = np.zeros(data.shape, dtype=np.uint)
-	markers[data < -0.3] = 1
-	markers[data > 1.3] = 2
+	markers[img < -0.3] = 1
+	markers[img > 1.3] = 2
 	labels = random_walker(img, markers,beta = 10, mode = 'bf')
 
 def make_features(img,label = 0): 
