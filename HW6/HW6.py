@@ -53,6 +53,26 @@ def get_contractid():
 	return cdict
 
 def get_closingdata():
+	"""
+	pull the closing data from the intrade api
+	make a dictionary with closing price per date per state
+	"""
+	cdict = get_contractid()
+	cids = cdict.values()
+	states = cdict.keys()
+	pricedict = {}
+	for idx, cid in enumerate(cids):
+		state = states[idx]
+		pricedict[state] = {}
+		url = "http://api.intrade.com/jsp/XML/MarketData/ClosingPrice.jsp?conID=" + str(cid)
+		page = urlreader(url)
+		data = page.find("closingprice").findAll("cp")
+		for cp in data:
+			x = cp.decode()
+			price = x[x.find('price')+7:x.find(" sessionhi")-1]
+			date = x[x.find('date')+6:x.find(" GMT")]
+			#hack to get price and date
+			pricedict[state][date] = price
 
 
 def answer_hw():
