@@ -2,17 +2,20 @@ import sqlite3
 from bs4 import BeautifulSoup
 import urllib2
 
+def urlreader(url):
+	response = urllib2.urlopen(url)
+	html = response.read()
+	response.close()
+	page = BeautifulSoup(html)
+	return page
+
 def get_elecvotes():
 	"""
 	makes a dictionary of states with respective electoral votes
 	"""
-	response = urllib2.urlopen("http://www.fec.gov/pages/elecvote.htm")
-	html = response.read()
-	response.close()
-
-	page = BeautifulSoup(html)
+	page = urlreader("http://www.fec.gov/pages/elecvote.htm")
+	
 	evdict = {}
-
 	for tablerow in [x.findAll("td") for x in page.find('table').find_all('tr')[1:]]:
 		datalist = [val.get_text() for val in tablerow]
 
@@ -22,12 +25,34 @@ def get_elecvotes():
 			evdict[state] = votes
 		except:
 			continue
+	DCval = evdict.pop('D.C.')
+	evdict['District of Columbia'] = DCval #so that fits with intrade spelling
 	return evdict
 
+def get_contractid():
+	"""
+	a hack for pulling out the contract id for each state.
+	there MUST be a better way of doing this
+	"""
+	page = urlreader("http://api.intrade.com/jsp/XML/MarketData/xml.jsp")
+	evdict = get_elecvotes()
 
-#answer hw
+	states = evdict.keys()
+	for event in page.findAll('contract'): 
+	#can't do as list comprehension because need to be able to refer to event
+		name = event.find('name')
+		for state in states:
+			func = re.compile('Republican nominee to win ' + state)
+			blah = func.search(name.string) #if the event name is relevant
+			if blah: #if it is, then pull out the contract id
+				cid = event.decode().split(' ')[2][3::]
+				cid = float(cid[1:-1])
+
+
 def answer_hw():
-	
+	"""
+	answers the hw - makes tables, etc
+	"""	
 	print "-"*50
 	print "question a - create table called 'election' and populate it with statename, electoral votes, and intrade contract id"
 	#get data
@@ -51,4 +76,8 @@ def answer_hw():
 
 	#cursor.execute("DROP TABLE election")
 
-	print 
+	print "-"*50
+	print "question b - create a table called 'prediction' and populate it with all of the intrade closing data for each state and general election"
+
+
+
