@@ -2,6 +2,7 @@ import sqlite3
 from bs4 import BeautifulSoup
 import urllib2
 import re
+import datetime
 
 def urlreader(url):
 	response = urllib2.urlopen(url)
@@ -69,11 +70,11 @@ def get_closingdata():
 		data = page.find("closingprice").findAll("cp")
 		for cp in data:
 			x = cp.decode()
-			price = x[x.find('price')+7:x.find(" sessionhi")-1]
-			date = x[x.find('date')+6:x.find(" GMT")]
+			price = float(x[x.find('price')+7:x.find(" sessionhi")-1])
+			date = str(x[x.find('date')+6:x.find(" GMT")])
 			#hack to get price and date
 			pricedict[state][date] = price
-
+	return pricedict
 
 def answer_hw():
 	"""
@@ -85,7 +86,7 @@ def answer_hw():
 	evdict = get_elecvotes()
 	cdict = get_contractid()
 	#make table
-	connection = sqlite3.connect("/Users/matar/Documents/Courses/PythonClass/HW6/tmp.db")
+	connection = sqlite3.connect("/Users/matar/Documents/Courses/PythonClass/HW6/hw6.db")
 	cursor = connection.cursor()
 	#define columns
 	cmd = """CREATE TABLE election (
@@ -107,6 +108,45 @@ def answer_hw():
 
 	print "-"*50
 	print "question b - create a table called 'prediction' and populate it with all of the intrade closing data for each state and general election"
+	pricedict = get_closingdata()
+	cmd = """CREATE TABLE prediction (
+		id integer primary key autoincrement default 0,
+		state text,
+		day text,
+		price integer);"""
+	cursor.execute(cmd)
 
+	for state in pricedict.keys():
+		for day in pricedict[state].keys():
+			price = pricedict[state][day]
+			data = (state, day, price)
+			cmd = ("INSERT INTO prediction (state, day, price) VALUES " + str(data))
+			cursor.execute(cmd)
+
+	#failed attempt to make tables that refer to each other
+#	cmd = """CREATE TABLE prediction (
+#		id integer primary key autoincrement default 0,
+#		state text);"""
+#	cursor.execute(cmd)
+#
+#	cmd = """CREATE TABLE prices (
+#		pid integer primary key autoincrement default 0,
+#		id integer not null default 0,
+#		dte text,
+#		price integer);"""
+#	cursor.execute(cmd)
+#
+#	for state in pricedict.keys():
+#		data = (state)
+#		cmd = ("INSERT INTO prediction (state) VALUES " + str(data))
+#		cursor.execute(cmd)
+#		data = (pricedict[state])
+#		for day in data.keys():
+#			price = data[day]
+#			data = (day, price)
+#			cmd = ("INSERT INTO price (dte, price) VALUES " + str(data))
+#			cursor.execute(cmd)
+
+	
 
 
