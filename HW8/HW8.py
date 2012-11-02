@@ -6,9 +6,6 @@ ipcluster start -n 4 outside of python
 from multiprocessing import Pool
 from IPython import parallel
 import numpy as np
-import subprocess
-import pylab
-import matplotlib.pyplot as plt
 
 def serial(number_of_darts = 200000):
 	"""
@@ -45,18 +42,13 @@ def serial(number_of_darts = 200000):
 	serial = {'pi_approx' : pi_approx, 'number_of_darts': number_of_darts, 'execution_time' : execution_time, 'number_of_darts_in_circle':number_of_darts_in_circle, "darts_per_second" : number_of_darts/execution_time}
 	return serial
 
-def parallel_ipython(rc,number_of_darts=200000):
+def ipcluster_parallel(dview,number_of_darts=200000):
 	"""
 	calls serial dart throwing on separate engines by scattering the number of darts thrown across them.
 	input is the client and (optionally) the number of darts
 	returns a list of dictionaries - one dictionary per engine.
 	"""
-	#when not run in loop can use this
-	#rc =parallel.Client()
-	#rc.block=True
-	
 	#put function on all engines
-	dview = rc[:]
 	dview['serial'] = serial 
 	#separate darts across engines
 	dview.scatter('darts',np.arange(number_of_darts)) 
@@ -67,7 +59,7 @@ def parallel_ipython(rc,number_of_darts=200000):
 
 def ave_parallel_results(results):
 	"""
-	takes a dictionary of serial results outputted from parallel_ipython and computes the execution time and pi approximation and the sum of the darts per second, number of darts thrown and darts in circle.
+	takes a dictionary of serial results outputted from parallel_ipython. Computes the mean of execution time, pi approximation. Computes the sum of darts per second, number of darts thrown and darts in circle. Makes sense to compute sum of darts per second, althought it makes IPcluster an order of magnitude above the other methods.
 	"""
 	meandict = dict()
 	params = results[0].keys()
@@ -80,13 +72,13 @@ def ave_parallel_results(results):
 
 def multiproc(pool,number_of_darts):
 	"""
-	multiprocessing code - only works from command line
+	multiprocessing code - set up pool of processes
 	"""
 	result = pool.apply_async(serial,[number_of_darts])
 	return result.get()
 
 
-def run_parallel_methods(dart_array=np.arange(10000,100000,10000)):
+def run_parallel_methods(dview, pool, dart_array=np.arange(10000,100000,10000)):
 	"""
 	runs each of the methods (serial, ipython parallel, and multiprocessing) on an array of number of darts.
 	returns three lists of dictionaries - each dictionary is for a different number of darts.
@@ -94,29 +86,39 @@ def run_parallel_methods(dart_array=np.arange(10000,100000,10000)):
 	#subprocess.call(["ipcluster", "start",'-n','4']) <- this works but then doesn't let you do anything else on that terminal. not sure if there is a better way of doing this.
 	slist = list()
 	plist = list()
-	mlist = list()
-	
-	#set up client for ipython parallel
-	rc =parallel.Client()
-	rc.block=True
-	#set up the procesess for multiprocessing
-	pool = Pool(processes=4)
-	
-	for number_of_darts in dart_array:
-		slist.append(serial(number_of_darts))
-		results = ave_parallel_results(parallel_ipython(rc,number_of_darts))
-		plist.append(results)
-		mlist.append(multiproc(pool,number_of_darts))
+	mlist = list()	
+
+	slist = map(serial,dart_array) 
+	#for serial, number of darts is lower in map than in loop - why?
+	for number_of_darts in dart_array: 
+		presults = ave_parallel_results(ipcluster_parallel(dview,number_of_darts))
+		plist.append(presults) #ipcluster
+		mlist.append(multiproc(pool,number_of_darts)) #multiprocessing
 	return slist, plist, mlist
 
-def plot_parallel_methods(slist, plist, mlist):
-	#get the number of darts used - same for all lists
-	ndarts = np.array([x['number_of_darts'] for x in slist]) 
-	
-	f = plt.figure()
+
+if __name__ == '__main__':
+
+	#set up client for IPcluster
+	rc =parallel.Client()
+	dview = rc[:]
+	#set up the procesess for multiprocessing
+	pool = Pool(processes=4)
+
+	dart_array = 10**np.arange(3,8)
+	slist, plist, mlist = run_parallel_methods(dview, pool, dart_array)
+
+	import pylab
+	import matplotlib.pyplot as plt
+
+	#get the number of darts used - same for all lists - same as dart_array
+	#ndarts = np.array([x['number_of_darts'] for x in slist]) 
+	ndarts = dart_array
+
+	f = plt.figure(figsize=(11,8), facecolor='w',edgecolor='w')
 	ax1 = plt.subplot(111)
 	ax2 = ax1.twinx()
-	ax1.set_xlabel('Number of Darts Thrown')
+	ax1.set_xlabel('Log(Number of Darts Thrown)')
 	ax1.set_ylabel('Log(Execution Time), solid line')
 	ax2.set_ylabel('Simulation Rate (Darts/Second), dotted line')
 	listtype = ['Simple Method','IPcluster Method','Multiprocessing Method']
@@ -128,18 +130,12 @@ def plot_parallel_methods(slist, plist, mlist):
 		ax1.plot(ndarts,extime, label = listtype[cnt],linewidth = 2)
 		ax2.plot(ndarts,simtime, '--',label = listtype[cnt],linewidth = 2)
 		cnt+=1
+
 	ax1.legend(loc='upper left')
 	ax1.set_yscale('log')
 	ax1.set_xscale('log')
+	ax2.set_xscale('log')
+	ax1.axis(xmin=10, xmax=10**8)
+	ax2.axis(xmin=10, xmax=10**8)
+	plt.show()
 
-
-#works
-#if __name__ == '__main__':
-#	slist, plist, mlist = answer_hw()
-#	print slist, plist, mlist
-
-#if __name__=='__main__':
-#	number_of_darts=200000
-#	pool = Pool(processes=4)
-#	result = pool.apply_async(serial,[number_of_darts])
-#	print result.get(timeout=1)
