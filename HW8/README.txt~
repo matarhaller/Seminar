@@ -7,4 +7,4 @@ The Simple method and MultiProcessing method both have similar simulation rates 
 
 IT looks like the simple method is only marginally slower than the multiprocessing method for this many darts - maybe for larger sizes it makes a bigger difference (but i dont have the patience to run it that long).
 
-I'm running this on a MacBook Pro with 2.66GHz Intel Core i7, with 4 "cores" - See the HW8_figure_8cores.png for what happens when I run with 8 - looks even more wrong.
+I'm running this on a MacBook Pro with 2.66GHz Intel Core i7, with 4 "cores" - maybe I should experiment with more... 

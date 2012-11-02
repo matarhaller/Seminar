@@ -103,7 +103,7 @@ if __name__ == '__main__':
 	rc =parallel.Client()
 	dview = rc[:]
 	#set up the procesess for multiprocessing
-	pool = Pool(processes=4)
+	pool = Pool(processes=8)
 
 	dart_array = 10**np.arange(3,8)
 	slist, plist, mlist = run_parallel_methods(dview, pool, dart_array)
