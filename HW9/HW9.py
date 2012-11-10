@@ -32,7 +32,6 @@ def make_db(bib_filepath):
     creates a database using SQLAlchemy
     """
     parser = bibtex.Parser()
-    #bib_data = parser.parse_file('/Users/matar/Documents/Courses/python-seminar/Homeworks/homework9_data/homework_9_refs.bib')
     bib_data = parser.parse_file(bib_filepath)
 
     # make database - each instance of class is a row in the table Article 
@@ -69,7 +68,6 @@ def format_results(querylist):
     """
     astring = "<p><h1> Query Results </h1></p>"
     articles =""
-    fieldnames = ['adsurl','adsnote','journal','title','year']
     for article in querylist:
         details = "<p> <b>" + article.title + "</b> </p> <p>" + article.authors + "</p> <p>" + str(article.year) + "</p> <p> keywords: " + article.keywords + "</p> <p>" + article.adsnote + "</p> <p>" + article.adsurl + "</p> <hr>"
         articles = articles+details
@@ -88,6 +86,9 @@ def index():
         <p> Please upload a collection: <br>
         <input type = "file" name = "collection" />
         </p>
+        <p> Please name your collection: <br>
+        <input type = "text" name = "collection_name" />
+        </p>
         <input type = submit value = Upload>
         </form>'''
     else:
@@ -102,14 +103,14 @@ def search():
     """
     performs search on query.
     slow for large queries.
-    need to add button to reload search page for new search.
     """
     if request.method == 'GET':
         return '''
         <form action = "search" method = "POST">
         <p> What is your query? </p>
         <p> Note that queries must be formatted as sql queries </p> 
-        <p> for example : keywords LIKE "% MAGELLANIC%"</p>
+        <p> for example : keywords LIKE "%MAGELLANIC%"</p>
+        <p> to search again, just reload page </p>
         <input type = "text" name = "querystring" />
         </p>
         <input type = "submit" value = Search>
@@ -117,7 +118,9 @@ def search():
         '''
     else:
         querystring = request.form["querystring"]
-        return format_results(Article.query.filter(querystring).all())
+        ans = " <form action = search > <input type = submit value = New Search>" + format_results(Article.query.filter(querystring).all())
+        return ans
+
 
 if __name__ == "__main__":
     app.run()

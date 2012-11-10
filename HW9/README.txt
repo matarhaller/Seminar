@@ -8,5 +8,4 @@ things that i haven't yet accounted for:
 - if you don't upload a file, you can still continue to the search page
 - you can't upload multiple collections
 - graceful error handling
-- a link on the search page to reload and search again
 
