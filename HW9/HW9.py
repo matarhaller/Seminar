@@ -16,10 +16,7 @@ class Article(db.Model):
     title = db.Column(db.String(50))
     year = db.Column(db.Integer)
     authors = db.Column(db.String(200))
-    #authorfirst = db.Column(db.String(10)) #can do lists?
-    #authorlast = db.Column(db.String(10))
 
-    #author year journalname referece - dont need all info in bibtex
     def __init__(self, adsurl, adsnote, keywords, title, year,authors):
         self.adsurl = adsurl
         self.adsnote = adsnote
@@ -57,7 +54,7 @@ def make_db(bib_filepath):
             except:
                 authors = ""
             article = Article(adsurl, adsnote, keywords, title, year,authors) 
-            #create instance of Article, same as writing to database
+            #create instance of Article, writing to database
 
             db.session.add(article)
             try:
