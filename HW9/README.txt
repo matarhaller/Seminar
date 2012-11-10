@@ -9,3 +9,6 @@ things that i haven't yet accounted for:
 - you can't upload multiple collections
 - graceful error handling
 
+in order to make it work with mulitple collections, i think i need to have make_db not create a db each time
+instead, it should add the existing bibtex entries to the database (with instances of Article)
+one of the fields of the the Article class should be the collection name (and then you can keep track of collections and search by it)...

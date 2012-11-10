@@ -30,6 +30,7 @@ def make_db(bib_filepath):
     parse collection
     takes in the filepath to the bibtex collection
     creates a database using SQLAlchemy
+    puts author and keywords for those entries that have them
     """
     parser = bibtex.Parser()
     bib_data = parser.parse_file(bib_filepath)
@@ -39,7 +40,6 @@ def make_db(bib_filepath):
     for key in bib_data.entries.keys():
         entry = bib_data.entries[key]
         if entry.type == 'article':
-            #fieldnames = bib_data.entries[entry].fields.keys()
             adsurl = entry.fields['adsurl']
             adsnote = entry.fields['adsnote']
             title = entry.fields['title']
@@ -64,7 +64,6 @@ def make_db(bib_filepath):
 def format_results(querylist):
     """ 
     makes html string to display query results - should have used template
-    hardcoded, and ugly
     """
     astring = "<p><h1> Query Results </h1></p>"
     articles =""
