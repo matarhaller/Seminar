@@ -5,9 +5,9 @@ import os
 import math
 import scipy.io
 
-class subj_globals():
+class Subject():
 	"""
-	Makes an object with all of the data parameters and raw data.
+	Makes an Subject object with all of the data parameters and raw data.
 	Includes methods for manipulating the data.
 	"""
 	def __init__(self, subj, block, elecs, ANsrate, srate, gdat, SJdir, Events):
@@ -99,7 +99,7 @@ class subj_globals():
 		p, q = (srate_new / self.srate).as_integer_ratio()
 
 		for e in np.arange(min(self.gdat.shape)):
-			
+
 
 
 
