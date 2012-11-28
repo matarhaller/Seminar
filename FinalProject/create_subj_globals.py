@@ -1,14 +1,16 @@
-## need to split up into separate .py files (one for subj_globals class (maybe make as module) and another script for calling everything)
 from __future__ import division
 import numpy as np
 import matplotlib.pyplot as plt
 import os
-import cPickle
 import math
 import scipy.io
 
 class subj_globals():
-	def __init__(self, subj, block, elecs, ANsrate, srate, gdat, SJdir):
+	"""
+	Makes an object with all of the data parameters and raw data.
+	Includes methods for manipulating the data.
+	"""
+	def __init__(self, subj, block, elecs, ANsrate, srate, gdat, SJdir, Events):
 		#initialize variables
 		self.subj = subj		#subject name (ie 'ST22')
 		self.block = block		#block name (ie 'decision','target')
@@ -17,6 +19,7 @@ class subj_globals():
 		self.srate = srate		#digital sampling rate
 		self.gdat = gdat 		#raw data matrix elecs x tmpts (numpy array)
 		self.SJdir = SJdir 		#subject directory (/DATA/Stanford/Subjs/)
+		self.Events = Events    #dictionary with fields onsets,offsets, RTs...
 
 		#create analysis and data folders (DO I NEED BOTH?)
 		self.DTdir = os.path.join(self.SJdir, self.subj, 'data', self.block)
@@ -32,7 +35,7 @@ class subj_globals():
 		
 	def create_CAR(self, grouping): #need to parallelize with cython. 
 	#too big to have as method inside a class?
-	#to make less data - should overwrite the raw gdat with gdat_CAR, keep saved gdat outside of the class.
+	#to make less data - should overwrite the raw gdat with gdat_CAR, orig gdat will stay (outside of class)
 		""" 
 		Create common average reference data matrix, add to class.
 		Calcuates CAR from only good electrodes, removes CAR from all elecs
@@ -88,4 +91,28 @@ class subj_globals():
 		# add ungrouped CAR to class
 		self.gdat_CAR = gdat_CAR
 
+	def resample(self, srate_new=1000):
+		"""
+		Resamples srate to srate_new.
+		"""
+		#find rational fraction for resampling
+		p, q = (srate_new / self.srate).as_integer_ratio()
+
+		for e in np.arange(min(self.gdat.shape)):
+			
+
+
+
+
+	def makeTrialsMTX(self,Params,elec): #should do outside of class so that can run independently on each electrode?
+		"""
+		INPUT:
+			Params.f1 = 70			lower freq cutoff
+			Params.f2 = 150;    	upper freq cutoff
+			Params.st   = -250;  	start time window
+			Params.en   = 1700;  	end time window
+			Params.bl_st = -250; 	baseline start
+			Params.bl_en =  -50; 	baseline end
+		"""
+			
 
