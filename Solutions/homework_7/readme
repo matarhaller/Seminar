@@ -1,0 +1,24 @@
+Python for Science, Fall 2012
+GUIs
+Homework 8 Solutions
+
+To run the image search & modification GUI, simply run:
+$ python homework8solutions.py
+
+
+COMMENTS:
+These solutions use Traits and TraitsUI to implement an image search & modification
+program, using the MPL_FigureEditor class introduced in lecture.
+We introduce a few modules we haven't seen in the class yet; hopefully this is
+more informative than confusing!
+
+New modules:
+ - simplejson, a JSON-parser.  (JSON is a format commonly used in online transactions, like
+   the google image search API. See http://json.org/ for more info.)
+   This is an alternative to BeautifulSoup, which is built to handle HTML, while simplejson
+   is designed to (of course) handle JSON.
+ - Image, ImageFilter, and ImageEnhance are all part of the Python Image Library, a set of 
+   tools which (of course) are built to interact with images within Python.  Read more about
+   it at http://www.pythonware.com/library/pil/handbook/index.htm.
+   This is an alternative to modules like scikits-image (which has a more of a focus on 
+   image analysis, while PIL focusses more on image manipulation).

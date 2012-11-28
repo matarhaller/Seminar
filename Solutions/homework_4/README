@@ -1,0 +1,17 @@
+The homework 4 solutions are contained in three programs,
+> xmlrpc_client.py
+> xmlrpc_server.py
+> audio_analysis.py
+
+To run the client/server pair, open two terminals, start the server
+running in one, and run the client in the other.  (Make sure cake.jpg is present.)
+
+term1$ python xmlrpc_server.py
+term2$ python xmlrpc_client.py
+
+The audio analysis code uses `smoothing.py` and `notes_list.txt` as supporting
+files, so they must be in the local directory. To run the audio analysis, 
+make sure those files nd the `homework4_data` folder are present,
+then run 
+$ python audio_analysis.py
+

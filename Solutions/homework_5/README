@@ -1,0 +1,25 @@
+The official solutions are contained in three python files, and 
+will run on the folder 'verification_images'
+Read the source documentation for further explanation.
+
+DOWNLOAD TRAINING IMAGES FROM
+http://astro.berkeley.edu/~ishivvers/data/50_categories.tar.gz
+AND VALIDATION IMAGES FROM
+http://astro.berkeley.edu/~ishivvers/data/validation_images.tar.gz
+
+NOTE:
+This problem requires a lot of memory, computation, and hard disk space!
+The below commands will probably take a few hundreds of seconds to run 
+and will produce a file about 5GB in size.
+If you don't have the resources for this, don't run it!
+
+REQUIRES:
+python modules:
+- pylab, scipy, sklearn, skimage, multiprocessing
+
+
+TO RUN SOLUTIONS:
+in folder that contains both `50_categories` and `validation_images` folders, run
+$ python feature_calc.py
+$ python train_classifier.py
+$ python homework5solutions.py

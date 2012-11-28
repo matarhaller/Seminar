@@ -1,0 +1,20 @@
+The solutions to the PySci Fall 2012 homework on parallelism
+are contained in the file homework8solutions.py
+
+Simply run the script from the command line:
+$ python homework8solutions.py
+
+
+NOTES:
+The default set of trials takes a few minutes to run on my laptop
+( MacBook Air, four cores at 2GHz each )
+
+To speed up (or slow down) the simulations, modify either of these variables:
+n_runs
+  - the integer number of times to run each trial
+  - a lower number will reduce the accuracy of the execution time estimates
+darts_thrown
+  - the list of n_darts to throw for each trial
+  - i.e. to run more quickly set:
+    darts_thrown = map(int, np.logspace(1, 6, 10))
+

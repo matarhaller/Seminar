@@ -1,0 +1,22 @@
+Homework 6, Python for Science Fall 2012.
+
+This solution is implemented in two files, populate_db.py and homework6solutions.py
+They must be run in that order!
+
+
+To scrape info from the web into a local database, run
+$ python populate_db.py
+
+Then, to run the simulations and create the plots, run
+$ python homework6solutions.py
+
+
+To explore how guaranteeing a win for various probability thresholds affects
+the outcome, alter the `cut` parameter in the `simulation` function in homework6solutions.py
+NOTE: to re-run simulations, you may need to drop the `simulation` table from the database.
+to do this, run the following SQL command (either from the command line or from within python)
+>> DROP TABLE simulation;
+
+
+
+Author: Isaac Shivvers
