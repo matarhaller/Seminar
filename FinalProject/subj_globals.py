@@ -25,18 +25,12 @@ class Subject():
 
 		#create analysis and data folders (DO I NEED BOTH?)
 		self.DTdir = os.path.join(self.SJdir, self.subj, 'data', self.block)
-		self.ANdir = os.path.join(self.SJdir, self.subj, 'analysis', self.block)
-
 		if not os.path.isdir(self.DTdir):
 			os.makedirs(self.DTdir) #recursive mkdir - will create entire path
 			print 'making ' + self.DTdir
-		
-		if not os.path.isdir(self.ANdir):
-			os.makedirs(self.ANdir)
-			print 'making ' + self.ANdir
 
 		#logfile creation
-		self.logfile = os.path.join(self.ANdir, 'logfile.log')
+		self.logfile = os.path.join(self.DTdir, 'logfile.log')
 		self.logit('created %s - %s' %(self.subj, self.block))
 
 	def logit(self, message):
@@ -56,8 +50,8 @@ class Subject():
 
 		self.logit('resampled to %i' %(srate_new))
 
-class Event(): #need to find way to relate it to Subj class
-	def __init__ (self, ANsrate, stimonset, stimoffset, responset, respoffset, badevent, resp, sample, cresp):
+class Event(): #MAYBE MAKE IT A DICTIONARY?
+	def __init__ (self, ANsrate, stimonset, stimoffset, responset, respoffset, badevent, resp, sample, cresp, SJdir):
 		self.ANsrate = ANsrate		#analog sampling rate
 		self.stimonset = stimonset 	#stim onset times (array)
 		self.stimoffset = stimoffset
@@ -67,6 +61,23 @@ class Event(): #need to find way to relate it to Subj class
 		self.resp = resp 			#subject responses (list)
 		self.sample = sample 		#stimuli presented (array)
 		self.cresp = cresp			#correct response (list)
+		self.SJdir = SJdir 			#subject directory
+
+		#create data folder (in case doesn't already exist)
+		self.DTdir = os.path.join(self.SJdir, self.subj, 'data', self.block)
+		if not os.path.isdir(self.DTdir):
+			os.makedirs(self.DTdir) #recursive mkdir - will create entire path
+			print 'making ' + self.DTdir
+		
+		#logfile creation
+		self.logfile = os.path.join(self.DTdir, 'logfile.log')
+		self.logit('created Events')
+
+	def logit(self, message):
+		logf = open(self.logfile, "a")
+		logf.write('[%s] %s' % (datetime.datetime.now(), message))
+		logf.flush()
+		logf.close()
 
 	def calc_acc(self):
 		"""
@@ -74,12 +85,14 @@ class Event(): #need to find way to relate it to Subj class
 		"""
 		self.acc = (self.resp == self.cresp).astype(int)
 		print 'accuracy : %f' %(np.mean(self.acc))
+		self.logit('calculated acc')
  
 	def calc_RT(self):
 		RT = np.round(np.subtract(self.responset,self.stimonset))
 		good = np.flatnonzero(self.badevent == 0)
 		self.RT = RT[good]
 		print 'RT : %i ms' %(np.mean(self.RT)/self.ANsrate *1000)
+		self.logit('calculated RT')
 
 	def convert_srate(self,srate):
 		"""
@@ -90,7 +103,8 @@ class Event(): #need to find way to relate it to Subj class
 		self.responset = round(self.responset / self.ANsrate * srate)
 		self.respoffset = round(self.respoffset / self.ANsrate * srate)
 		self.ANsrate = srate
-		#how inheret logit method from Subject?
+		self.logit('resampled to %f, updated ANsrate' %(srate))
+
 
 def save_dataobj(dataobj, directory, name): #gives memory error with pickle and cPickle - should reduce size?
 	""" saves object to file to be read later
@@ -165,4 +179,5 @@ def create_CAR(dataobj, grouping):
 	# add ungrouped CAR to class
 	dataobj.gdat_CAR = gdat_CAR
 
+	#log the change
 	dataobj.logit('created CAR, grouping  = %i' %(grouping))
