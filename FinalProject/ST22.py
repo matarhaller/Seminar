@@ -2,14 +2,8 @@ import os
 import cPickle
 import scipy.io
 import numpy as np
+import subj_globals
 
-from create_subj_globals import subj_globals
-
-def save_dataobj(dataobj): #gives memory error with pickle and cPickle - should reduce size?
-	""" save the object to file to be read later"""
-	filename = os.path.join(dataobj.DTdir, 'alldata.pic')
-	with open (filename, 'wb') as output:
-		cPickle.dump(dataobj, output, cPickle.HIGHEST_PROTOCOL)
 
 SJdir = '/Users/matar/Documents/PyTest/'
 subj = 'ST22'
@@ -23,6 +17,36 @@ bad_elecs = bad_elecs-1 #make it 0 ordered
 Enum  = np.arange(96) #96 elecs
 elecs = np.setdiff1d(Enum,bad_elecs)
 
-ST22 = subj_globals(subj, block, elecs, ANsrate, srate, gdat, SJdir)
-save_dataobj(ST22)
-ST22 = cPickle.load(open("/Users/matar/Documents/PyTest/ST01/data/test/alldata.pic", 'r'))
+
+stimonset = scipy.io.loadmat('/Users/matar/Documents/Courses/PythonClass/FinalProject/stimonset.mat')
+stimonset = stimonset['stimonset'].squeeze()
+
+stimoffset = scipy.io.loadmat('/Users/matar/Documents/Courses/PythonClass/FinalProject/stimoffset.mat')
+stimoffset = stimoffset['stimoffset'].squeeze()
+
+responset = scipy.io.loadmat('/Users/matar/Documents/Courses/PythonClass/FinalProject/responset.mat')
+responset = responset['responset'].squeeze()
+
+respoffset = scipy.io.loadmat('/Users/matar/Documents/Courses/PythonClass/FinalProject/respoffset.mat')
+respoffset = respoffset['respoffset'].squeeze()
+
+badevent = scipy.io.loadmat('/Users/matar/Documents/Courses/PythonClass/FinalProject/badevent.mat')
+badevent = badevent['badevent'].squeeze()
+
+resp = scipy.io.loadmat('/Users/matar/Documents/Courses/PythonClass/FinalProject/resp.mat')
+resp = resp['resp'].squeeze()
+
+sample = scipy.io.loadmat('/Users/matar/Documents/Courses/PythonClass/FinalProject/SAMPLE.mat')
+sample = sample['SAMPLE'].squeeze()
+
+cresp = scipy.io.loadmat('/Users/matar/Documents/Courses/PythonClass/FinalProject/CORRECT.mat')
+cresp = cresp['CORRECT'].squeeze().tolist()
+cresp = np.array([x[0] for x in cresp])
+
+Events =  subj_globals.Event(ANsrate, stimonset, stimoffset, responset, respoffset, badevent, resp, sample, cresp)
+ST22 = subj_globals.Subject(subj, block, elecs, srate, gdat, SJdir, Events)
+
+
+
+#save_dataobj(ST22)
+#ST22 = cPickle.load(open("/Users/matar/Documents/PyTest/ST01/data/test/alldata.pic", 'r'))

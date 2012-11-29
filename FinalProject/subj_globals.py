@@ -5,24 +5,23 @@ import os
 import math
 import scipy.io
 import cython
+import datetime
+import pickle
 
 class Subject():
 	"""
 	Makes an Subject object with all of the data parameters and raw data.
-	Includes methods for manipulating the data.
+	Includes method for writing to logfile
 	"""
 
-	def __init__(self, subj, block, elecs, ANsrate, srate, gdat, SJdir, Events):
+	def __init__(self, subj, block, elecs, srate, gdat, SJdir):
 		#initialize variables
 		self.subj = subj		#subject name (ie 'ST22')
 		self.block = block		#block name (ie 'decision','target')
 		self.elecs = elecs 		#what electrodes are good
-		self.ANsrate = ANsrate	#analog sampling rate
-		self.srate = srate		#digital sampling rate
+		self.srate = srate		#data sampling rate
 		self.gdat = gdat 		#raw data matrix elecs x tmpts (numpy array)
 		self.SJdir = SJdir 		#subject directory (/DATA/Stanford/Subjs/)
-		self.Events = Events    #Events class with timing/behavior info.
-
 
 		#create analysis and data folders (DO I NEED BOTH?)
 		self.DTdir = os.path.join(self.SJdir, self.subj, 'data', self.block)
@@ -37,7 +36,7 @@ class Subject():
 			print 'making ' + self.ANdir
 
 		#logfile creation
-		self.logfile = os.path.join(ANdir 'logfile.log')
+		self.logfile = os.path.join(self.ANdir, 'logfile.log')
 		self.logit('created %s - %s' %(self.subj, self.block))
 
 	def logit(self, message):
@@ -57,28 +56,69 @@ class Subject():
 
 		self.logit('resampled to %i' %(srate_new))
 
+class Event(): #need to find way to relate it to Subj class
+	def __init__ (self, ANsrate, stimonset, stimoffset, responset, respoffset, badevent, resp, sample, cresp):
+		self.ANsrate = ANsrate		#analog sampling rate
+		self.stimonset = stimonset 	#stim onset times (array)
+		self.stimoffset = stimoffset
+		self.responset = responset
+		self.respoffset = respoffset
+		self.badevent = badevent	#if the event is bad (array)
+		self.resp = resp 			#subject responses (list)
+		self.sample = sample 		#stimuli presented (array)
+		self.cresp = cresp			#correct response (list)
 
-	def save(self):
-		""" saves object to file to be read later"""
-		filename = os.path.join(self.DTdir, 'alldata.pic')
-		with open (filename, 'wb') as output:
-			cPickle.dump(self, output, cPickle.HIGHEST_PROTOCOL)
+	def calc_acc(self):
+		"""
+		calculate subject accuracy per trial, store in Events, print mean acc
+		"""
+		self.acc = (self.resp == self.cresp).astype(int)
+		print 'accuracy : %f' %(np.mean(self.acc))
+ 
+	def calc_RT(self):
+		RT = np.round(np.subtract(self.responset,self.stimonset))
+		good = np.flatnonzero(self.badevent == 0)
+		self.RT = RT[good]
+		print 'RT : %i ms' %(np.mean(self.RT)/self.ANsrate *1000)
 
-		self.logit('saved to %s' %(DTdir))
+	def convert_srate(self,srate):
+		"""
+		converts the sampling rate to srate (and updates ANsrate)
+		"""
+		self.stimonset = round(self.stimonset / self.ANsrate * srate)
+		self.stimoffset = round(self.stimoffset / self.ANsrate * srate)
+		self.responset = round(self.responset / self.ANsrate * srate)
+		self.respoffset = round(self.respoffset / self.ANsrate * srate)
+		self.ANsrate = srate
+		#how inheret logit method from Subject?
 
-		
+def save_dataobj(dataobj, directory, name): #gives memory error with pickle and cPickle - should reduce size?
+	""" saves object to file to be read later
+		INPUT: 
+			dataobj - either Subject or Events
+			directory - either DTdir (for Subject) or ANdir (for Events)
+			filename without extension  - string, ex: subj + block or 'Events'
+	"""
+	fullfilename = os.path.join(directory, name + '.pkl')
+	output = open(fullfilename, 'wb')
+	pickle.dump(dataobj, output, -1)
+
+
 def create_CAR(dataobj, grouping): 
 #too big to have as method inside a class?
 #to make less data - should overwrite the raw gdat with gdat_CAR, orig gdat will stay (outside of class)??
+# cython???
+
 	""" 
 	Create common average reference data matrix, add to class.
 	Calcuates CAR from only good electrodes, removes CAR from all elecs
 	INPUT:
+		dataobj  -  from the Subject class
 		grouping -  size of groups to average 
 					(noise can come in banks of 16 because of preamp)
 					if noise isn't grouped, grouping = number of electrodes
 	"""
-	numelecs = min(dataobj.gdat.shape) # number of electrodes
+	numelecs = min(dataobj.gdat.shape) # total number of electrodes
 	chRank = np.zeros(numelecs) 
 	chRank[dataobj.elecs] = 1 # which electrodes are good
 	Ngroups = math.ceil(dataobj.elecs[-1]/grouping)
@@ -89,14 +129,14 @@ def create_CAR(dataobj, grouping):
 	groups = groups.flatten()
 
 	# preallocate CAR
-	gdat_CAR = self.gdat # numelecs X tmpts DONT DO COPY BC TOO MUCH DATA
+	gdat_CAR = dataobj.gdat # numelecs X tmpts DONT DO COPY BC TOO MUCH DATA
 	CAR = np.zeros((Ngroups, max(dataobj.gdat.shape))) # Ngroups X tmpts
 	CAR_all = np.zeros(max(dataobj.gdat.shape)) # 1 X tmepts
 
 	# subtract the mean from each electrode (including bad)
 	# then sum gdat by group only for valid electrodes
-	for e in self.elecs:
-		gdat_CAR[e,:] = self.gdat[e,:] - np.mean(self.gdat[e,:]) 
+	for e in dataobj.elecs:
+		gdat_CAR[e,:] = dataobj.gdat[e,:] - np.mean(dataobj.gdat[e,:]) 
 		if chRank[e]: # valid elec
 			CAR[groups[e],:] = CAR[groups[e],:] + gdat_CAR[e,:]
 
@@ -113,7 +153,7 @@ def create_CAR(dataobj, grouping):
 			CAR_all = CAR_all + gdat_CAR[e,:] #sum CAR for valid elecs
 
 	# calculate CAR for all elecs
-	CAR_all = np.divide(CAR_all, len(self.elecs))
+	CAR_all = np.divide(CAR_all, len(dataobj.elecs))
 
 	# add grouped CAR to class
 	self.gdat_CAR_group = gdat_CAR 
@@ -123,22 +163,6 @@ def create_CAR(dataobj, grouping):
 		gdat_CAR[e,:] = gdat_CAR[e,:] - CAR_all
 
 	# add ungrouped CAR to class
-	self.gdat_CAR = gdat_CAR
+	dataobj.gdat_CAR = gdat_CAR
 
-
-
-
-
-
-	def makeTrialsMTX(self,Params,elec): #should do outside of class so that can run independently on each electrode?
-		"""
-		INPUT:
-			Params.f1 = 70			lower freq cutoff
-			Params.f2 = 150;    	upper freq cutoff
-			Params.st   = -250;  	start time window
-			Params.en   = 1700;  	end time window
-			Params.bl_st = -250; 	baseline start
-			Params.bl_en =  -50; 	baseline end
-		"""
-			
-
+	dataobj.logit('created CAR, grouping  = %i' %(grouping))
