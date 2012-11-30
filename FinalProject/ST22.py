@@ -43,7 +43,17 @@ cresp = scipy.io.loadmat('/Users/matar/Documents/Courses/PythonClass/FinalProjec
 cresp = cresp['CORRECT'].squeeze().tolist()
 cresp = np.array([x[0] for x in cresp])
 
-Events =  subj_globals.Event(ANsrate, stimonset, stimoffset, responset, respoffset, badevent, resp, sample, cresp)
+Events = dict()
+Events['ANsrate'] = ANsrate
+Events['stimonset'] = stimonset
+Events['stimoffset'] = stimoffset
+Events['responset'] = responset
+Events['respoffset'] = respoffset
+Events['resp'] = resp
+Events['badevent'] = badevent
+Events['sample'] = sample
+Events['cresp'] = cresp
+
 ST22 = subj_globals.Subject(subj, block, elecs, srate, gdat, SJdir, Events)
 
 

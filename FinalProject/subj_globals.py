@@ -14,14 +14,16 @@ class Subject():
 	Includes method for writing to logfile
 	"""
 
-	def __init__(self, subj, block, elecs, srate, gdat, SJdir):
+	def __init__(self, subj, block, elecs, srate, ANsrate, gdat, SJdir, Events):
 		#initialize variables
 		self.subj = subj		#subject name (ie 'ST22')
 		self.block = block		#block name (ie 'decision','target')
 		self.elecs = elecs 		#what electrodes are good
 		self.srate = srate		#data sampling rate
-		self.gdat = gdat 		#raw data matrix elecs x tmpts (numpy array)
+		self.srate = ANsrate		#analog sampling rate
+		self.gdat = gdat 		#opened file of raw data matrix elecs x tmpts (numpy array) with pytables or hdf5. have 2 tables, 1 to write to, 1 to read from so not all contained in RAM - look in databases lecture. or db where each elec is a row in db. loop through each id and loop over it, pull out elec id .... hdf5 is db thing optimized for numerical work.
 		self.SJdir = SJdir 		#subject directory (/DATA/Stanford/Subjs/)
+		self.Events = Events	#dictionary of timing information
 
 		#create analysis and data folders (DO I NEED BOTH?)
 		self.DTdir = os.path.join(self.SJdir, self.subj, 'data', self.block)
@@ -34,6 +36,9 @@ class Subject():
 		self.logit('created %s - %s' %(self.subj, self.block))
 
 	def logit(self, message):
+		"""
+		keep a log of all analyses done
+		"""
 		logf = open(self.logfile, "a")
 		logf.write('[%s] %s' % (datetime.datetime.now(), message))
 		logf.flush()
@@ -41,72 +46,48 @@ class Subject():
 
 	def resample(self, srate_new=1000):
 		"""
-		Resamples srate to srate_new.
+		Resamples srate to srate_new. 
+		Updates Events srate.
+
 		"""
 		#find rational fraction for resampling
 		p, q = (srate_new / self.srate).as_integer_ratio()
 
-		# NEED HELP installing upfirdn
+		# NEED HELP installing upfirdn - email them, or find different resampling way.
 
-		self.logit('resampled to %i' %(srate_new))
+		self.logit('resampled gdat from %f to %f' %(srate, srate_new))
 
-class Event(): #MAYBE MAKE IT A DICTIONARY?
-	def __init__ (self, ANsrate, stimonset, stimoffset, responset, respoffset, badevent, resp, sample, cresp, SJdir):
-		self.ANsrate = ANsrate		#analog sampling rate
-		self.stimonset = stimonset 	#stim onset times (array)
-		self.stimoffset = stimoffset
-		self.responset = responset
-		self.respoffset = respoffset
-		self.badevent = badevent	#if the event is bad (array)
-		self.resp = resp 			#subject responses (list)
-		self.sample = sample 		#stimuli presented (array)
-		self.cresp = cresp			#correct response (list)
-		self.SJdir = SJdir 			#subject directory
-
-		#create data folder (in case doesn't already exist)
-		self.DTdir = os.path.join(self.SJdir, self.subj, 'data', self.block)
-		if not os.path.isdir(self.DTdir):
-			os.makedirs(self.DTdir) #recursive mkdir - will create entire path
-			print 'making ' + self.DTdir
+		#for Events
+		for k in self.Events.keys():
+			if ismember(k, set('stimonset','stimoffset','responset','respoffset')):
+				self.Events[k] = round(self.Events[k] / self.ANsrate * self.srate)
+		self.logit('resampled Events from %f to %f' %(srate, srate_new))	
 		
-		#logfile creation
-		self.logfile = os.path.join(self.DTdir, 'logfile.log')
-		self.logit('created Events')
-
-	def logit(self, message):
-		logf = open(self.logfile, "a")
-		logf.write('[%s] %s' % (datetime.datetime.now(), message))
-		logf.flush()
-		logf.close()
+		#update srate, ANsrate
+		self.srate = srate_new
+		self.ANsrate = srate_new
+		self.logit('update srate, ANsrate to %f' %(srate_new))
 
 	def calc_acc(self):
 		"""
 		calculate subject accuracy per trial, store in Events, print mean acc
 		"""
-		self.acc = (self.resp == self.cresp).astype(int)
-		print 'accuracy : %f' %(np.mean(self.acc))
+		self.Events['acc'] = (self.Events['resp'] == self.Events['cresp']).astype(int)
+		print 'accuracy : %f' %(np.mean(self.Events['acc']))
 		self.logit('calculated acc')
  
 	def calc_RT(self):
-		RT = np.round(np.subtract(self.responset,self.stimonset))
-		good = np.flatnonzero(self.badevent == 0)
-		self.RT = RT[good]
-		print 'RT : %i ms' %(np.mean(self.RT)/self.ANsrate *1000)
+		RT = np.round(np.subtract(self.Events['responset'],self.Events['stimonset']))
+		good = np.flatnonzero(self.Events.['badevent'] == 0)
+		self.Events['RT'] = RT[good]
+		print 'RT : %i ms' %(np.mean(self.Events['RT'])/self.ANsrate *1000)
 		self.logit('calculated RT')
 
-	def convert_srate(self,srate):
-		"""
-		converts the sampling rate to srate (and updates ANsrate)
-		"""
-		self.stimonset = round(self.stimonset / self.ANsrate * srate)
-		self.stimoffset = round(self.stimoffset / self.ANsrate * srate)
-		self.responset = round(self.responset / self.ANsrate * srate)
-		self.respoffset = round(self.respoffset / self.ANsrate * srate)
-		self.ANsrate = srate
-		self.logit('resampled to %f, updated ANsrate' %(srate))
+	self.create_CAR = create_CAR #might need to be defined after create_CAR, or can just move create_CAR back inside.
 
-
-def save_dataobj(dataobj, directory, name): #gives memory error with pickle and cPickle - should reduce size?
+def save_dataobj(dataobj, directory, name): 
+	#gives memory error with pickle and cPickle - should reduce size?
+	#different parameters assoc with each instantiation of class - with pointer to db.
 	""" saves object to file to be read later
 		INPUT: 
 			dataobj - either Subject or Events
@@ -119,9 +100,9 @@ def save_dataobj(dataobj, directory, name): #gives memory error with pickle and 
 
 
 def create_CAR(dataobj, grouping): 
-#too big to have as method inside a class?
-#to make less data - should overwrite the raw gdat with gdat_CAR, orig gdat will stay (outside of class)??
-# cython???
+	#too big to have as method inside a class?
+	#to make less data - should overwrite the raw gdat with gdat_CAR, orig gdat will stay (outside of class)??
+	# cython???
 
 	""" 
 	Create common average reference data matrix, add to class.
@@ -147,6 +128,8 @@ def create_CAR(dataobj, grouping):
 	CAR = np.zeros((Ngroups, max(dataobj.gdat.shape))) # Ngroups X tmpts
 	CAR_all = np.zeros(max(dataobj.gdat.shape)) # 1 X tmepts
 
+	# pull three loops out into sep functions - only they will be in cython and compiled. write them in a separate file completely - in setup.py run them and compile them separately. can just feed it in the file object to the gdat or the filepath. in cython code can open the db and do for item in db. from comiled cython code import blah, on this file object/path do whatever.
+	#write cython code (code.pyx) where do cdef to define function, run cython on it one time (definied in setup.py) - makes code.co file - then in here (python file) from code import function. now function is a python function (reads it in from code.so) or look at numexpr.
 	# subtract the mean from each electrode (including bad)
 	# then sum gdat by group only for valid electrodes
 	for e in dataobj.elecs:
