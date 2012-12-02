@@ -3,7 +3,7 @@ import cPickle
 import scipy.io
 import numpy as np
 import subj_globals
-
+import tables
 
 SJdir = '/Users/matar/Documents/PyTest/'
 subj = 'ST22'
@@ -14,8 +14,27 @@ ANsrate = 2.4414e04
 srate = 3.0518e03
 bad_elecs = np.array([4,9,11,12,13,17,22,23,29,40,47,48,51,52,53,61,63,65, 66, 68, 69, 70, 71, 77, 91, 92, 95, 96])
 bad_elecs = bad_elecs-1 #make it 0 ordered
-Enum  = np.arange(96) #96 elecs
+#Enum  = np.arange(96) #96 elecs
+Enum = max(gdat.shape)
 elecs = np.setdiff1d(Enum,bad_elecs)
+
+
+class gdatclass(IsDescriptor):
+	elec_number = Int32Col()
+	data = Float64Col()
+
+
+## make table for gdat
+h5file = tables.openFile(SJdir + "ST22.h5", mode = 'w', title = 'ST22 data file')
+group = h5file.createGroup("/", 'ST22', 'subject folder') #'/' is another way to refer to h5file.root. group is like directory
+table = h5file.createTable(group, 'gdat', gdatclass, 'raw data')
+electrode = table.row
+for i in arange(Enum):
+	electrode['elec_number'] = i
+	electrode['data'] = gdat[i,:]
+	electrode.append()
+table.flush()
+
 
 
 stimonset = scipy.io.loadmat('/Users/matar/Documents/Courses/PythonClass/FinalProject/stimonset.mat')
@@ -55,7 +74,6 @@ Events['sample'] = sample
 Events['cresp'] = cresp
 
 ST22 = subj_globals.Subject(subj, block, elecs, srate, gdat, SJdir, Events)
-
 
 
 #save_dataobj(ST22)

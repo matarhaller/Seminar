@@ -8,97 +8,6 @@ import cython
 import datetime
 import pickle
 
-#TEST
-
-class Subject():
-	"""
-	Makes an Subject object with all of the data parameters and raw data.
-	Includes method for writing to logfile
-	"""
-
-	def __init__(self, subj, block, elecs, srate, ANsrate, gdat, SJdir, Events):
-		#initialize variables
-		self.subj = subj		#subject name (ie 'ST22')
-		self.block = block		#block name (ie 'decision','target')
-		self.elecs = elecs 		#what electrodes are good
-		self.srate = srate		#data sampling rate
-		self.srate = ANsrate		#analog sampling rate
-		self.gdat = gdat 		#opened file of raw data matrix elecs x tmpts (numpy array) with pytables or hdf5. have 2 tables, 1 to write to, 1 to read from so not all contained in RAM - look in databases lecture. or db where each elec is a row in db. loop through each id and loop over it, pull out elec id .... hdf5 is db thing optimized for numerical work.
-		self.SJdir = SJdir 		#subject directory (/DATA/Stanford/Subjs/)
-		self.Events = Events	#dictionary of timing information
-
-		#create analysis and data folders (DO I NEED BOTH?)
-		self.DTdir = os.path.join(self.SJdir, self.subj, 'data', self.block)
-		if not os.path.isdir(self.DTdir):
-			os.makedirs(self.DTdir) #recursive mkdir - will create entire path
-			print 'making ' + self.DTdir
-
-		#logfile creation
-		self.logfile = os.path.join(self.DTdir, 'logfile.log')
-		self.logit('created %s - %s' %(self.subj, self.block))
-
-	def logit(self, message):
-		"""
-		keep a log of all analyses done
-		"""
-		logf = open(self.logfile, "a")
-		logf.write('[%s] %s' % (datetime.datetime.now(), message))
-		logf.flush()
-		logf.close()
-
-	def resample(self, srate_new=1000):
-		"""
-		Resamples srate to srate_new. 
-		Updates Events srate.
-
-		"""
-		#find rational fraction for resampling
-		p, q = (srate_new / self.srate).as_integer_ratio()
-
-		# NEED HELP installing upfirdn - email them, or find different resampling way.
-
-		self.logit('resampled gdat from %f to %f' %(srate, srate_new))
-
-		#for Events
-		for k in self.Events.keys():
-			if ismember(k, set('stimonset','stimoffset','responset','respoffset')):
-				self.Events[k] = round(self.Events[k] / self.ANsrate * self.srate)
-		self.logit('resampled Events from %f to %f' %(srate, srate_new))	
-		
-		#update srate, ANsrate
-		self.srate = srate_new
-		self.ANsrate = srate_new
-		self.logit('update srate, ANsrate to %f' %(srate_new))
-
-	def calc_acc(self):
-		"""
-		calculate subject accuracy per trial, store in Events, print mean acc
-		"""
-		self.Events['acc'] = (self.Events['resp'] == self.Events['cresp']).astype(int)
-		print 'accuracy : %f' %(np.mean(self.Events['acc']))
-		self.logit('calculated acc')
- 
-	def calc_RT(self):
-		RT = np.round(np.subtract(self.Events['responset'],self.Events['stimonset']))
-		good = np.flatnonzero(self.Events.['badevent'] == 0)
-		self.Events['RT'] = RT[good]
-		print 'RT : %i ms' %(np.mean(self.Events['RT'])/self.ANsrate *1000)
-		self.logit('calculated RT')
-
-	self.create_CAR = create_CAR #might need to be defined after create_CAR, or can just move create_CAR back inside.
-
-def save_dataobj(dataobj, directory, name): 
-	#gives memory error with pickle and cPickle - should reduce size?
-	#different parameters assoc with each instantiation of class - with pointer to db.
-	""" saves object to file to be read later
-		INPUT: 
-			dataobj - either Subject or Events
-			directory - either DTdir (for Subject) or ANdir (for Events)
-			filename without extension  - string, ex: subj + block or 'Events'
-	"""
-	fullfilename = os.path.join(directory, name + '.pkl')
-	output = open(fullfilename, 'wb')
-	pickle.dump(dataobj, output, -1)
 
 
 def create_CAR(dataobj, grouping): 
@@ -166,3 +75,96 @@ def create_CAR(dataobj, grouping):
 
 	#log the change
 	dataobj.logit('created CAR, grouping  = %i' %(grouping))
+
+
+class Subject():
+	"""
+	Makes an Subject object with all of the data parameters and raw data.
+	Includes method for writing to logfile
+	"""
+
+	def __init__(self, subj, block, elecs, srate, ANsrate, gdat, SJdir, Events):
+		#initialize variables
+		self.subj = subj		#subject name (ie 'ST22')
+		self.block = block		#block name (ie 'decision','target')
+		self.elecs = elecs 		#what electrodes are good
+		self.srate = srate		#data sampling rate
+		self.srate = ANsrate		#analog sampling rate
+		self.gdat = gdat 		#opened file of raw data matrix elecs x tmpts (numpy array) with pytables or hdf5. have 2 tables, 1 to write to, 1 to read from so not all contained in RAM - look in databases lecture. or db where each elec is a row in db. loop through each id and loop over it, pull out elec id .... hdf5 is db thing optimized for numerical work.
+		self.SJdir = SJdir 		#subject directory (/DATA/Stanford/Subjs/)
+		self.Events = Events	#dictionary of timing information
+
+		#create analysis and data folders (DO I NEED BOTH?)
+		self.DTdir = os.path.join(self.SJdir, self.subj, 'data', self.block)
+		if not os.path.isdir(self.DTdir):
+			os.makedirs(self.DTdir) #recursive mkdir - will create entire path
+			print 'making ' + self.DTdir
+
+		#logfile creation
+		self.logfile = os.path.join(self.DTdir, 'logfile.log')
+		self.logit('created %s - %s' %(self.subj, self.block))
+
+		self.create_CAR = create_CAR #might need to be defined after create_CAR, or can just move create_CAR back inside.
+
+
+	def logit(self, message):
+		"""
+		keep a log of all analyses done
+		"""
+		logf = open(self.logfile, "a")
+		logf.write('[%s] %s' % (datetime.datetime.now(), message))
+		logf.flush()
+		logf.close()
+
+	def resample(self, srate_new=1000):
+		"""
+		Resamples srate to srate_new. 
+		Updates Events srate.
+
+		"""
+		#find rational fraction for resampling
+		p, q = (srate_new / self.srate).as_integer_ratio()
+
+		# NEED HELP installing upfirdn - email them, or find different resampling way.
+
+		self.logit('resampled gdat from %f to %f' %(srate, srate_new))
+
+		#for Events
+		for k in self.Events.keys():
+			if ismember(k, set('stimonset','stimoffset','responset','respoffset')):
+				self.Events[k] = round(self.Events[k] / self.ANsrate * self.srate)
+		self.logit('resampled Events from %f to %f' %(srate, srate_new))	
+		
+		#update srate, ANsrate
+		self.srate = srate_new
+		self.ANsrate = srate_new
+		self.logit('update srate, ANsrate to %f' %(srate_new))
+
+	def calc_acc(self):
+		"""
+		calculate subject accuracy per trial, store in Events, print mean acc
+		"""
+		self.Events['acc'] = (self.Events['resp'] == self.Events['cresp']).astype(int)
+		print 'accuracy : %f' %(np.mean(self.Events['acc']))
+		self.logit('calculated acc')
+ 
+	def calc_RT(self):
+		RT = np.round(np.subtract(self.Events['responset'],self.Events['stimonset']))
+		good = np.flatnonzero(self.Events['badevent'] == 0)
+		self.Events['RT'] = RT[good]
+		print 'RT : %i ms' %(np.mean(self.Events['RT'])/self.ANsrate *1000)
+		self.logit('calculated RT')
+
+
+def save_dataobj(dataobj, directory, name): 
+	#gives memory error with pickle and cPickle - should reduce size?
+	#different parameters assoc with each instantiation of class - with pointer to db.
+	""" saves object to file to be read later
+		INPUT: 
+			dataobj - either Subject or Events
+			directory - either DTdir (for Subject) or ANdir (for Events)
+			filename without extension  - string, ex: subj + block or 'Events'
+	"""
+	fullfilename = os.path.join(directory, name + '.pkl')
+	output = open(fullfilename, 'wb')
+	pickle.dump(dataobj, output, -1)
