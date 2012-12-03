@@ -3,7 +3,7 @@ import cPickle
 import scipy.io
 import numpy as np
 import subj_globals
-import tables
+import tables as tb
 
 SJdir = '/Users/matar/Documents/PyTest/'
 subj = 'ST22'
@@ -15,17 +15,55 @@ srate = 3.0518e03
 bad_elecs = np.array([4,9,11,12,13,17,22,23,29,40,47,48,51,52,53,61,63,65, 66, 68, 69, 70, 71, 77, 91, 92, 95, 96])
 bad_elecs = bad_elecs-1 #make it 0 ordered
 #Enum  = np.arange(96) #96 elecs
-Enum = max(gdat.shape)
+Enum = min(gdat.shape)
 elecs = np.setdiff1d(Enum,bad_elecs)
 
 
-class gdatclass(IsDescriptor):
-	elec_number = Int32Col()
-	data = Float64Col()
+num_elecs = min(gdat.shape) #number of keys (elecs)
+array_dtype = gdat.dtype
 
+class Record(tb.IsDescription):
+	elec = tb.Int32Col()
+	vrow = tb.Int32Col()
+
+fid = tb.openFile('/home/knight/matar/ST26.h5','w')
+atom = tb.Atom.from_dtype(gdat.dtype)
+k = f.createTable(fid.root, 'elecs', Record, expectedrows = num_elecs)
+v = f.createVLArray(fid.root, 'values', atom)
+
+#feed data
+row = k.row
+for i in xrange(num_elecs):
+	row['elec'] = i
+	row['vrow'] = i
+	row.append()
+	value = gdat[i,:]
+	v.append(value)
+k.flush()
+v.flush()
+fid.close()
+
+print 'result of fetches:'
+print 'key = "2" --> ', v[k.readWhere('key == 2')['vrow'][0]]
+print 'key = "0" --> ', v[k.readWhere('key == 0')['vrow'][0]]
+fid.close()
+
+fid = tb.openFile('/home/knight/matar/ST26.h5','r')
+
+
+class gdatclass(tables.IsDescription):
+	elec_number = tables.Int32Col()
+	data = tables.Float64Col()
 
 ## make table for gdat
-h5file = tables.openFile(SJdir + "ST22.h5", mode = 'w', title = 'ST22 data file')
+h5file = tables.openFile('/home/knight/matar/ST26.h5', mode = 'w', title = 'ST26 data file')
+
+atom = tables.Atom.from_dtype(gdat.dtype)
+ds = h5file.createCArray(h5file.root, 'ST26', atom, gdat.shape)
+ds[:] = gdat
+h5file.close()
+
+
 group = h5file.createGroup("/", 'ST22', 'subject folder') #'/' is another way to refer to h5file.root. group is like directory
 table = h5file.createTable(group, 'gdat', gdatclass, 'raw data')
 electrode = table.row
