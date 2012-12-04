@@ -8,7 +8,7 @@ import tables as tb
 SJdir = '/Users/matar/Documents/PyTest/'
 subj = 'ST22'
 block = 'decision'
-data = scipy.io.loadmat('/Users/matar/Documents/MATLAB/Knight/DATA/ST22/data/gdat.mat')
+data = scipy.io.loadmat('/Users/matar/Documents/MATLAB/DATA/Stanford/ST22/data/gdat.mat')
 gdat = data['gdat']
 ANsrate = 2.4414e04
 srate = 3.0518e03
@@ -26,10 +26,10 @@ class Record(tb.IsDescription):
 	elec = tb.Int32Col()
 	vrow = tb.Int32Col()
 
-fid = tb.openFile('/home/knight/matar/ST26.h5','w')
+fid = tb.openFile('/Users/matar/Documents/Courses/Python/Seminar/FinalProject/ST26.h5','w')
 atom = tb.Atom.from_dtype(gdat.dtype)
-k = f.createTable(fid.root, 'elecs', Record, expectedrows = num_elecs)
-v = f.createVLArray(fid.root, 'values', atom)
+k = fid.createTable(fid.root, 'elecs', Record, expectedrows = num_elecs)
+v = fid.createVLArray(fid.root, 'values', atom)
 
 #feed data
 row = k.row
@@ -46,7 +46,6 @@ fid.close()
 print 'result of fetches:'
 print 'key = "2" --> ', v[k.readWhere('key == 2')['vrow'][0]]
 print 'key = "0" --> ', v[k.readWhere('key == 0')['vrow'][0]]
-fid.close()
 
 fid = tb.openFile('/home/knight/matar/ST26.h5','r')
 
