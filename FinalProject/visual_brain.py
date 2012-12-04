@@ -3,8 +3,9 @@ import numpy as np
 import scipy.io 
 
 # load data
-data = scipy.io.loadmat('/Users/matar/Documents/MATLAB/Knight/electroderegistration/data_NC/NC_cortex.mat',struct_as_record = True)
-elecs = scipy.io.loadmat('/Users/matar/Documents/Courses/PythonClass/FinalProject/elecs.mat')
+data = scipy.io.loadmat('/Users/matar/Documents/Courses/Python/data/ST26_decision/cortex.mat',struct_as_record = True)
+
+elecmatrix = scipy.io.loadmat('/Users/matar/Documents/Courses/Python/data/ST26_decision/elecmatrix.mat')
 
 # xyz coordinates of cortex surface vertices (numpy array, 3 columns)
 brain = data['cortex']['vert'][0,0]
@@ -13,7 +14,7 @@ brain = data['cortex']['vert'][0,0]
 tri = data['cortex']['tri'][0,0]
 
 # xyz coordinates of electrode locations (numpy array, 3 columns)
-elecs = elecs['els']
+elecs = elecmatrix['els']
 
 # disable rendering (brings up figure faster)
 figure = mlab.gcf()
