@@ -6,7 +6,7 @@ import math
 import scipy.io
 import cython
 import datetime
-import pickle
+import cPickle
 import upfirdn
 import h5py
 
@@ -91,7 +91,6 @@ class Subject():
 	Makes an Subject object with all of the data parameters and raw data.
 	Includes method for writing to logfile
 	"""
-
 	def __init__(self, subj, block, elecs, srate, DTdir, Events):
 
 		#initialize variables
@@ -118,15 +117,15 @@ class Subject():
 		logf.flush()
 		logf.close()
 
-	def resample(self, srate_new=1000):
+	def resample(self, srate_new=1000): #NEED TO DO USING UPFIRDN
 		"""
 		Resamples srate to srate_new. 
-		Updates Events srate.
+		Updates Events ANsrate.
 		"""
 		#find rational fraction for resampling
 		p, q = (srate_new / self.srate).as_integer_ratio()
 
-		# NEED HELP installing upfirdn - email them, or find different resampling way.
+		#INSERT UPFIRDN HERE
 
 		self.logit('resampled gdat from %f to %f' %(srate, srate_new))
 
@@ -156,15 +155,13 @@ class Subject():
 		print 'RT : %i ms' %(np.mean(self.Events['RT'])/self.Events['ANsrate'] *1000)
 		self.logit('calculated RT - %f ms' %(np.mean(self.Events['RT']/self.Events['ANsrate']*1000)))
 
-def save_dataobj(dataobj, directory, name): 
-	#gives memory error with pickle and cPickle - should reduce size?
-	#different parameters assoc with each instantiation of class - with pointer to db.
-	""" saves object to file to be read later
-		INPUT: 
-			dataobj - either Subject or Events
-			directory - either DTdir (for Subject) or ANdir (for Events)
-			filename without extension  - string, ex: subj + block or 'Events'
-	"""
-	fullfilename = os.path.join(directory, name + '.pkl')
-	output = open(fullfilename, 'wb')
-	pickle.dump(dataobj, output, -1)
+	def save_dataobj(self): 
+		#gives memory error with pickle and cPickle - should reduce size?
+		#different parameters assoc with each instantiation of class - with pointer to db.
+		""" 
+		pickles object to file to be read later from DTdir
+		"""
+		fullfilename = os.path.join(self.DTdir, (self.subj + '_' + self.block + '.pkl'))
+		output = open(fullfilename, 'wb')
+		cPickle.dump(self, output, -1)
+		output.close()
