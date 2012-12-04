@@ -7,7 +7,8 @@ import scipy.io
 import cython
 import datetime
 import pickle
-
+import upfirdn
+import h5py
 
 
 def create_CAR(dataobj, grouping): 
@@ -24,6 +25,9 @@ def create_CAR(dataobj, grouping):
 					(noise can come in banks of 16 because of preamp)
 					if noise isn't grouped, grouping = number of electrodes
 	"""
+
+	f = h5py.File(dataobj.gdatfilepath,'r')
+	gdat = f['gdat']
 	numelecs = min(dataobj.gdat.shape) # total number of electrodes
 	chRank = np.zeros(numelecs) 
 	chRank[dataobj.elecs] = 1 # which electrodes are good
@@ -83,7 +87,7 @@ class Subject():
 	Includes method for writing to logfile
 	"""
 
-	def __init__(self, subj, block, elecs, srate, ANsrate, gdatfilepath, SJdir, Events):
+	def __init__(self, subj, block, elecs, srate, ANsrate, gdatfilepath, DTdir, Events):
 		#initialize variables
 		self.subj = subj		#subject name (ie 'ST22')
 		self.block = block		#block name (ie 'decision','target')
@@ -91,14 +95,14 @@ class Subject():
 		self.srate = srate		#data sampling rate
 		self.srate = ANsrate	#analog sampling rate
 		self.gdat = gdatfilepath #filepath to h5py dataset containing gdat
-		self.SJdir = SJdir 		#subject directory (/DATA/Stanford/Subjs/)
+		self.DTdir = DTdir 		#subject directory (/DATA/Stanford/Subjs/)
 		self.Events = Events	#dictionary of timing information
 
 		#logfile creation
 		self.logfile = os.path.join(self.DTdir, 'logfile.log')
 		self.logit('created %s - %s' %(self.subj, self.block))
 
-		self.create_CAR = create_CAR #common average ref(defined earlier)
+		self.create_CAR = create_CAR #common ave ref method (defined above)
 
 	def logit(self, message):
 		"""
@@ -113,7 +117,6 @@ class Subject():
 		"""
 		Resamples srate to srate_new. 
 		Updates Events srate.
-
 		"""
 		#find rational fraction for resampling
 		p, q = (srate_new / self.srate).as_integer_ratio()
@@ -139,15 +142,14 @@ class Subject():
 		"""
 		self.Events['acc'] = (self.Events['resp'] == self.Events['cresp']).astype(int)
 		print 'accuracy : %f' %(np.mean(self.Events['acc']))
-		self.logit('calculated acc')
+		self.logit('calculated acc - %f' %(self.Events['acc']))
  
 	def calc_RT(self):
 		RT = np.round(np.subtract(self.Events['responset'],self.Events['stimonset']))
 		good = np.flatnonzero(self.Events['badevent'] == 0)
 		self.Events['RT'] = RT[good]
 		print 'RT : %i ms' %(np.mean(self.Events['RT'])/self.ANsrate *1000)
-		self.logit('calculated RT')
-
+		self.logit('calculated RT - %f' %(self.Events['RT']/self.ANsrate*1000))
 
 def save_dataobj(dataobj, directory, name): 
 	#gives memory error with pickle and cPickle - should reduce size?
