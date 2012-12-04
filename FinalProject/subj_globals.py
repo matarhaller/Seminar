@@ -10,12 +10,9 @@ import pickle
 import upfirdn
 import h5py
 
-
 def create_CAR(dataobj, grouping): 
 	#too big to have as method inside a class?
-	#to make less data - should overwrite the raw gdat with gdat_CAR, orig gdat will stay (outside of class)??
 	# cython???
-
 	""" 
 	Create common average reference data matrix, add to class.
 	Calcuates CAR from only good electrodes, removes CAR from all elecs
@@ -25,30 +22,37 @@ def create_CAR(dataobj, grouping):
 					(noise can come in banks of 16 because of preamp)
 					if noise isn't grouped, grouping = number of electrodes
 	"""
-
-	f = h5py.File(dataobj.gdatfilepath,'r')
+	#load in gdat data
+	f = h5py.File(dataobj.gdatfilepath,'a')
 	gdat = f['gdat']
-	numelecs = min(dataobj.gdat.shape) # total number of electrodes
+
+	# define size parameters
+	numelecs = min(gdat.shape) # total number of electrodes
 	chRank = np.zeros(numelecs) 
 	chRank[dataobj.elecs] = 1 # which electrodes are good
 	Ngroups = math.ceil(dataobj.elecs[-1]/grouping)
 
+	# preallocate gdat_CAR, CAR, CAR_all, gdat_CAR_group
+	# add to gdat file as subgroups
+	subgroup = f.create_group("CAR")
+	gdat_CAR = subgroup.create_dataset('gdat_CAR', data = gdat)
+	CAR = subgroup.create_dataset('CAR', shape = (Ngroups, max(gdat.shape)), dtype = gdat.dtype)
+	CAR_all = subgroup.create_dataset('CAR_all', shape = (1, max(gdat.shape)), dtype = gdat.dtype)
+
+	#CAR = np.zeros((Ngroups, max(dataobj.gdat.shape))) # Ngroups X tmpts
+	#CAR_all = np.zeros(max(dataobj.gdat.shape)) # 1 X tmepts
+
 	# make lookup table of electrode groupings 
-	# according to how plugged in on the preamp
+	# according to how plugged in on the preamplifier during recording
 	groups =np.array([x*np.ones(grouping) for x in np.arange(Ngroups)])
 	groups = groups.flatten()
-
-	# preallocate CAR
-	gdat_CAR = dataobj.gdat # numelecs X tmpts DONT DO COPY BC TOO MUCH DATA
-	CAR = np.zeros((Ngroups, max(dataobj.gdat.shape))) # Ngroups X tmpts
-	CAR_all = np.zeros(max(dataobj.gdat.shape)) # 1 X tmepts
 
 	# pull three loops out into sep functions - only they will be in cython and compiled. write them in a separate file completely - in setup.py run them and compile them separately. can just feed it in the file object to the gdat or the filepath. in cython code can open the db and do for item in db. from comiled cython code import blah, on this file object/path do whatever.
 	#write cython code (code.pyx) where do cdef to define function, run cython on it one time (definied in setup.py) - makes code.co file - then in here (python file) from code import function. now function is a python function (reads it in from code.so) or look at numexpr.
 	# subtract the mean from each electrode (including bad)
 	# then sum gdat by group only for valid electrodes
 	for e in dataobj.elecs:
-		gdat_CAR[e,:] = dataobj.gdat[e,:] - np.mean(dataobj.gdat[e,:]) 
+		gdat_CAR[e,:] = gdat[e,:] - np.mean(gdat[e,:]) 
 		if chRank[e]: # valid elec
 			CAR[groups[e],:] = CAR[groups[e],:] + gdat_CAR[e,:]
 
@@ -79,6 +83,10 @@ def create_CAR(dataobj, grouping):
 
 	#log the change
 	dataobj.logit('created CAR, grouping  = %i' %(grouping))
+
+	#close file
+	f.close()
+	f1.close()
 
 
 class Subject():
