@@ -15,7 +15,7 @@ def create_CAR(dataobj, grouping):
 	""" 
 	Create common average reference data matrix, add to class.
 	Calcuates CAR from only good electrodes, removes CAR from all elecs
-	Adds subgroups to gdat hdf5 file
+	Adds subgroups to gdat hdf5 file - so can only be run once (becuase can't overwrite subgroups without first deleting them)
 
 	INPUT:
 		dataobj  -  from the Subject class
@@ -73,7 +73,7 @@ def create_CAR(dataobj, grouping):
 	# calculate CAR for all elecs
 	CAR_all = np.divide(CAR_all, len(dataobj.elecs))
 
-	# add grouped CAR to class
+	# add grouped CAR to class (without removing total CAR for all elecs)
 	gdat_CAR_group = gdat_CAR 
 
 	# remove total CAR for all electrodes (ungrouped)
@@ -84,7 +84,7 @@ def create_CAR(dataobj, grouping):
 	f.close()
 
 	#log the change
-	dataobj.logit('created CAR - grouping  = %i\n\tadded to %s' %(grouping, dataobj.gdatfilepath))
+	dataobj.logit('created CAR - grouping  = %i\nadded to %s' %(grouping, dataobj.gdat))
 
 class Subject():
 	"""
