@@ -3,9 +3,10 @@ import cPickle
 import scipy.io
 import numpy as np
 import subj_globals
-import tables as tb
+import h5py
 
-SJdir = '/Users/matar/Documents/PyTest/'
+
+DTdir = '/Users/matar/Documents/Courses/Python/data/'
 subj = 'ST22'
 block = 'decision'
 data = scipy.io.loadmat('/Users/matar/Documents/MATLAB/DATA/Stanford/ST22/data/gdat.mat')
@@ -18,7 +19,17 @@ bad_elecs = bad_elecs-1 #make it 0 ordered
 Enum = min(gdat.shape)
 elecs = np.setdiff1d(Enum,bad_elecs)
 
+#make data file
+f = h5py.File(DTdir + subj '_' block '.hdf5')
+dset = f.create_dataset('gdat', data = gdat)
+f.close()
 
+
+
+
+
+
+####pytables
 num_elecs = min(gdat.shape) #number of keys (elecs)
 array_dtype = gdat.dtype
 
@@ -72,7 +83,7 @@ for i in arange(Enum):
 	electrode.append()
 table.flush()
 
-
+#end pytables
 
 stimonset = scipy.io.loadmat('/Users/matar/Documents/Courses/PythonClass/FinalProject/stimonset.mat')
 stimonset = stimonset['stimonset'].squeeze()
