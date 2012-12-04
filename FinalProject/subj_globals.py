@@ -83,29 +83,22 @@ class Subject():
 	Includes method for writing to logfile
 	"""
 
-	def __init__(self, subj, block, elecs, srate, ANsrate, gdat, SJdir, Events):
+	def __init__(self, subj, block, elecs, srate, ANsrate, gdatfilepath, SJdir, Events):
 		#initialize variables
 		self.subj = subj		#subject name (ie 'ST22')
 		self.block = block		#block name (ie 'decision','target')
 		self.elecs = elecs 		#what electrodes are good
 		self.srate = srate		#data sampling rate
-		self.srate = ANsrate		#analog sampling rate
-		self.gdat = gdat 		#opened file of raw data matrix elecs x tmpts (numpy array) with pytables or hdf5. have 2 tables, 1 to write to, 1 to read from so not all contained in RAM - look in databases lecture. or db where each elec is a row in db. loop through each id and loop over it, pull out elec id .... hdf5 is db thing optimized for numerical work.
+		self.srate = ANsrate	#analog sampling rate
+		self.gdat = gdatfilepath #filepath to h5py dataset containing gdat
 		self.SJdir = SJdir 		#subject directory (/DATA/Stanford/Subjs/)
 		self.Events = Events	#dictionary of timing information
-
-		#create analysis and data folders (DO I NEED BOTH?)
-		self.DTdir = os.path.join(self.SJdir, self.subj, 'data', self.block)
-		if not os.path.isdir(self.DTdir):
-			os.makedirs(self.DTdir) #recursive mkdir - will create entire path
-			print 'making ' + self.DTdir
 
 		#logfile creation
 		self.logfile = os.path.join(self.DTdir, 'logfile.log')
 		self.logit('created %s - %s' %(self.subj, self.block))
 
-		self.create_CAR = create_CAR #might need to be defined after create_CAR, or can just move create_CAR back inside.
-
+		self.create_CAR = create_CAR #common average ref(defined earlier)
 
 	def logit(self, message):
 		"""
