@@ -11,11 +11,12 @@ import upfirdn
 import h5py
 
 def create_CAR(dataobj, grouping): 
-	#too big to have as method inside a class?
 	# cython???
 	""" 
 	Create common average reference data matrix, add to class.
 	Calcuates CAR from only good electrodes, removes CAR from all elecs
+	Adds subgroups to gdat hdf5 file
+
 	INPUT:
 		dataobj  -  from the Subject class
 		grouping -  size of groups to average 
@@ -49,6 +50,7 @@ def create_CAR(dataobj, grouping):
 
 	# pull three loops out into sep functions - only they will be in cython and compiled. write them in a separate file completely - in setup.py run them and compile them separately. can just feed it in the file object to the gdat or the filepath. in cython code can open the db and do for item in db. from comiled cython code import blah, on this file object/path do whatever.
 	#write cython code (code.pyx) where do cdef to define function, run cython on it one time (definied in setup.py) - makes code.co file - then in here (python file) from code import function. now function is a python function (reads it in from code.so) or look at numexpr.
+	
 	# subtract the mean from each electrode (including bad)
 	# then sum gdat by group only for valid electrodes
 	for e in dataobj.elecs:
@@ -78,16 +80,11 @@ def create_CAR(dataobj, grouping):
 	for e in np.arange(numelecs):
 		gdat_CAR[e,:] = gdat_CAR[e,:] - CAR_all
 
-	# add ungrouped CAR to class
-	dataobj.gdat_CAR = gdat_CAR
-
-	#log the change
-	dataobj.logit('created CAR, grouping  = %i' %(grouping))
-
 	#close file
 	f.close()
-	f1.close()
 
+	#log the change
+	dataobj.logit('created CAR - grouping  = %i\n\tadded to %s' %(grouping, dataobj.gdatfilepath))
 
 class Subject():
 	"""

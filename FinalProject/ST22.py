@@ -22,7 +22,7 @@ ANsrate = 2.4414e04
 srate = 3.0518e03
 bad_elecs = np.array([4,9,11,12,13,17,22,23,29,40,47,48,51,52,53,61,63,65, 66, 68, 69, 70, 71, 77, 91, 92, 95, 96]) #based on data
 bad_elecs = bad_elecs-1 #make it 0 ordered
-elecs = np.setdiff1d(min(gdat.shape),bad_elecs)
+elecs = np.setdiff1d(np.arange(min(gdat.shape)),bad_elecs)
 
 stimonset = scipy.io.loadmat('/Users/matar/Documents/Courses/PythonClass/FinalProject/stimonset.mat')
 stimonset = stimonset['stimonset'].squeeze()
