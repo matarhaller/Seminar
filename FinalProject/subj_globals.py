@@ -24,7 +24,7 @@ def create_CAR(dataobj, grouping):
 					if noise isn't grouped, grouping = number of electrodes
 	"""
 	#load in gdat data
-	f = h5py.File(dataobj.gdatfilepath,'a')
+	f = h5py.File(dataobj.gdat,'a')
 	gdat = f['gdat']
 
 	# define size parameters
@@ -50,7 +50,7 @@ def create_CAR(dataobj, grouping):
 
 	# pull three loops out into sep functions - only they will be in cython and compiled. write them in a separate file completely - in setup.py run them and compile them separately. can just feed it in the file object to the gdat or the filepath. in cython code can open the db and do for item in db. from comiled cython code import blah, on this file object/path do whatever.
 	#write cython code (code.pyx) where do cdef to define function, run cython on it one time (definied in setup.py) - makes code.co file - then in here (python file) from code import function. now function is a python function (reads it in from code.so) or look at numexpr.
-	
+
 	# subtract the mean from each electrode (including bad)
 	# then sum gdat by group only for valid electrodes
 	for e in dataobj.elecs:
@@ -74,7 +74,7 @@ def create_CAR(dataobj, grouping):
 	CAR_all = np.divide(CAR_all, len(dataobj.elecs))
 
 	# add grouped CAR to class
-	self.gdat_CAR_group = gdat_CAR 
+	gdat_CAR_group = gdat_CAR 
 
 	# remove total CAR for all electrodes (ungrouped)
 	for e in np.arange(numelecs):
@@ -92,29 +92,29 @@ class Subject():
 	Includes method for writing to logfile
 	"""
 
-	def __init__(self, subj, block, elecs, srate, ANsrate, gdatfilepath, DTdir, Events):
+	def __init__(self, subj, block, elecs, srate, DTdir, Events):
+
 		#initialize variables
-		self.subj = subj		#subject name (ie 'ST22')
-		self.block = block		#block name (ie 'decision','target')
-		self.elecs = elecs 		#what electrodes are good
-		self.srate = srate		#data sampling rate
-		self.srate = ANsrate	#analog sampling rate
-		self.gdat = gdatfilepath #filepath to h5py dataset containing gdat
-		self.DTdir = DTdir 		#subject directory (/DATA/Stanford/Subjs/)
-		self.Events = Events	#dictionary of timing information
+		self.subj = subj			#subject name (ie 'ST22')
+		self.block = block			#block name (ie 'decision','target')
+		self.elecs = elecs 			#what electrodes are good
+		self.srate = srate			#data sampling rate
+		self.DTdir = DTdir 			#subject directory (/DATA/Stanford/Subjs/)
+		self.Events = Events		#dictionary of timing information
 
 		#logfile creation
 		self.logfile = os.path.join(self.DTdir, 'logfile.log')
 		self.logit('created %s - %s' %(self.subj, self.block))
 
 		self.create_CAR = create_CAR #common ave ref method (defined above)
+		self.gdat = os.path.join(DTdir, 'gdat.hdf5') #filepath to h5py dataset containing raw data
 
 	def logit(self, message):
 		"""
 		keep a log of all analyses done
 		"""
 		logf = open(self.logfile, "a")
-		logf.write('[%s] %s' % (datetime.datetime.now(), message))
+		logf.write('\n[%s] %s\n' % (datetime.datetime.now(), message))
 		logf.flush()
 		logf.close()
 
@@ -133,13 +133,13 @@ class Subject():
 		#for Events
 		for k in self.Events.keys():
 			if ismember(k, set('stimonset','stimoffset','responset','respoffset')):
-				self.Events[k] = round(self.Events[k] / self.ANsrate * self.srate)
-		self.logit('resampled Events from %f to %f' %(srate, srate_new))	
+				self.Events[k] = round(self.Events[k] / self.Events['ANsrate'] * srate_new)
+		self.logit('resampled Events from %f to %f' %(Events['ANsrate'], srate_new))
 		
 		#update srate, ANsrate
 		self.srate = srate_new
-		self.ANsrate = srate_new
-		self.logit('update srate, ANsrate to %f' %(srate_new))
+		Events['ANsrate'] = srate_new
+		self.logit("update self.srate, Events['ANsrate'] to %f" %(srate_new))
 
 	def calc_acc(self):
 		"""
@@ -147,14 +147,14 @@ class Subject():
 		"""
 		self.Events['acc'] = (self.Events['resp'] == self.Events['cresp']).astype(int)
 		print 'accuracy : %f' %(np.mean(self.Events['acc']))
-		self.logit('calculated acc - %f' %(self.Events['acc']))
+		self.logit('calculated acc - %f' %(np.mean(self.Events['acc'])))
  
 	def calc_RT(self):
 		RT = np.round(np.subtract(self.Events['responset'],self.Events['stimonset']))
 		good = np.flatnonzero(self.Events['badevent'] == 0)
 		self.Events['RT'] = RT[good]
-		print 'RT : %i ms' %(np.mean(self.Events['RT'])/self.ANsrate *1000)
-		self.logit('calculated RT - %f' %(self.Events['RT']/self.ANsrate*1000))
+		print 'RT : %i ms' %(np.mean(self.Events['RT'])/self.Events['ANsrate'] *1000)
+		self.logit('calculated RT - %f ms' %(np.mean(self.Events['RT']/self.Events['ANsrate']*1000)))
 
 def save_dataobj(dataobj, directory, name): 
 	#gives memory error with pickle and cPickle - should reduce size?
