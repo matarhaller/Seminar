@@ -120,6 +120,15 @@ class Subject():
 		"""
 		#find rational fraction for resampling
 		p, q = (srate_new / self.srate).as_integer_ratio()
+		N = 10
+		pqmax = max(p,q)
+
+		#design filter
+		fc = 1/2/pqmax
+		L = 2*N*pqmax + 1
+		h = p 
+
+		y = upfirdn.upfirdn(x, h, p, q)
 
 		#INSERT UPFIRDN HERE
 
