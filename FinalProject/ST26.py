@@ -10,7 +10,7 @@ import h5py
 subj = 'ST26'
 block = 'decision'
 DTdir = os.path.join('/Users/matar/Documents/Courses/Python/data/', subj + '_' + block)
-pathtodata = '/Users/matar/Documents/MATLAB/DATA/Stanford/ST26/data/gdat.mat'
+pathtodata = '/Users/matar/Documents/MATLAB/DATA/Stanford/ST26/data/decision/gdat.mat'
 
 #try and make datafile (hdf5 file of gdat)
 subj_globals.make_datafile(pathtodata,DTdir)

@@ -106,7 +106,7 @@ class Subject():
 		self.logit('created %s - %s' %(self.subj, self.block))
 
 		self.create_CAR = create_CAR #common ave ref method (defined above)
-		self.gdat = os.path.join(DTdir, 'gdat.hdf5') #filepath to h5py dataset containing raw data
+		self.gdat = os.path.join(DTdir, 'gdat.hdf5') #filepath to hdf5 file containing raw data
 
 	def logit(self, message):
 		"""
@@ -156,8 +156,6 @@ class Subject():
 		self.logit('calculated RT - %f ms' %(np.mean(self.Events['RT']/self.Events['ANsrate']*1000)))
 
 	def save_dataobj(self): 
-		#gives memory error with pickle and cPickle - should reduce size?
-		#different parameters assoc with each instantiation of class - with pointer to db.
 		""" 
 		pickles object to file to be read later from DTdir
 		"""
@@ -165,7 +163,10 @@ class Subject():
 		output = open(fullfilename, 'wb')
 		cPickle.dump(self, output, -1)
 		output.close()
+		self.logit('saved %s' %(fullfilename))
 
+
+#start up functions
 def make_datafile(pathtodata, DTdir):
 	"""
 	make hdf5 data file and its encompassing data folder (DTdir)
@@ -175,20 +176,21 @@ def make_datafile(pathtodata, DTdir):
 		DTdir - the data directory where the new data will be saved
 	"""
 	if not os.path.exists(os.path.join(DTdir, 'gdat.hdf5')):
-		os.makedirs(DTdir) #create DT folder if it doesn't exist
- 		print 'made ' + DTdir
-		
-		data = scipy.io.loadmat(pathtodata) #load raw data
-		gdat = data['gdat']
+		try:
+			os.makedirs(DTdir) #create DT folder if it doesn't exist
+ 			print 'made ' + DTdir
+		finally:
+			data = scipy.io.loadmat(pathtodata) #load raw data
+			gdat = data['gdat']
 
-		gdatfilepath = os.path.join(DTdir, 'gdat.hdf5')
-		f = h5py.File(gdatfilepath)
-		dset = f.create_dataset('gdat', data = gdat)
-		f.close()
+			gdatfilepath = os.path.join(DTdir, 'gdat.hdf5')
+			f = h5py.File(gdatfilepath)
+			dset = f.create_dataset('gdat', data = gdat)
+			f.close()
 	else:
 		print os.path.join(DTdir, 'gdat.hdf5') + ' already exists'
 
-def load_datafile(DTdir, subj, block, DTdir, elecs='', srate='',  Events=''):
+def load_datafile(subj, block, DTdir, elecs='', srate='',  Events=''):
 	"""
 	Loads instance of Subject data class if it has already been created, otherwise creates it with given parameters.
 	elecs, srate, and Events need only be supplied if creating the instance, otherwise default to null because already exist in saved instance.
@@ -196,9 +198,10 @@ def load_datafile(DTdir, subj, block, DTdir, elecs='', srate='',  Events=''):
 	pkl_filepath = os.path.join(DTdir, (subj + '_' + block + '.pkl'))
 	if os.path.exists(pkl_filepath):
 		pkl_file = open(pkl_filepath, 'rb')
-		ST22 = cPickle.load(pkl_file)
+		subject_instance = cPickle.load(pkl_file)
 		pkl_file.close()
 		print 'loading %s' %(pkl_filepath)
+		return subject_instance
 	else:
 		print 'creating %s %s instance of Subject class' %(subj, block)
 		return subj_globals.Subject(subj, block, elecs, srate, DTdir, Events)
