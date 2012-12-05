@@ -40,9 +40,6 @@ def create_CAR(dataobj, grouping):
 	CAR = subgroup.create_dataset('CAR', shape = (Ngroups, max(gdat.shape)), dtype = gdat.dtype)
 	CAR_all = subgroup.create_dataset('CAR_all', shape = (1, max(gdat.shape)), dtype = gdat.dtype)
 
-	#CAR = np.zeros((Ngroups, max(dataobj.gdat.shape))) # Ngroups X tmpts
-	#CAR_all = np.zeros(max(dataobj.gdat.shape)) # 1 X tmepts
-
 	# make lookup table of electrode groupings 
 	# according to how plugged in on the preamplifier during recording
 	groups =np.array([x*np.ones(grouping) for x in np.arange(Ngroups)])
@@ -92,7 +89,6 @@ class Subject():
 	Includes method for writing to logfile
 	"""
 	def __init__(self, subj, block, elecs, srate, DTdir, Events):
-
 		#initialize variables
 		self.subj = subj			#subject name (ie 'ST22')
 		self.block = block			#block name (ie 'decision','target')
@@ -143,8 +139,15 @@ class Subject():
 	def calc_acc(self):
 		"""
 		calculate subject accuracy per trial, store in Events, print mean acc
+		drops ambiguous stimuli from calculation
 		"""
-		self.Events['acc'] = (self.Events['resp'] == self.Events['cresp']).astype(int)
+		good = self.Events['badevent']== 0
+		notambig = self.Events['cresp'] != 'u'
+
+		trials = np.flatnonzero(good & notambig)
+
+		self.Events['acc'] = (self.Events['resp'][trials] == self.Events['cresp'][trials]).astype(int)
+		
 		print 'accuracy : %f' %(np.mean(self.Events['acc']))
 		self.logit('calculated acc - %f' %(np.mean(self.Events['acc'])))
  
@@ -164,7 +167,6 @@ class Subject():
 		cPickle.dump(self, output, -1)
 		output.close()
 		self.logit('saved %s' %(fullfilename))
-
 
 #start up functions
 def make_datafile(pathtodata, DTdir):
@@ -204,4 +206,4 @@ def load_datafile(subj, block, DTdir, elecs='', srate='',  Events=''):
 		return subject_instance
 	else:
 		print 'creating %s %s instance of Subject class' %(subj, block)
-		return subj_globals.Subject(subj, block, elecs, srate, DTdir, Events)
+		return Subject(subj, block, elecs, srate, DTdir, Events)

@@ -17,13 +17,13 @@ subj_globals.make_datafile(pathtodata,DTdir)
 
 ANsrate = 2.4414e04
 srate = 3.0518e03
-bad_elecs = np.array([4,9,11,12,13,17,22,23,29,40,47,48,51,52,53,61,63,65, 66, 68, 69, 70, 71, 77, 91, 92, 95, 96]) #based on data
+bad_elecs = np.array([15, 17,18,19,20,21,22,23, 24, 30, 31, 40, 58, 65, 81,82,83,84,85, 95,96, 119, 77,128,127,97,99,100,101,109,110,111,112]) #based on data
 bad_elecs = bad_elecs-1 #make it 0 ordered
-num_elecs = 96
+num_elecs = 128
 elecs = np.setdiff1d(np.arange(num_elecs),bad_elecs)
 
 #make Events dictionary from existing .mat files
-EventsArray = scipy.io.load(os.path.join(DTdir, 'EventsArray.mat'))
+EventsArray = scipy.io.loadmat(os.path.join(DTdir, 'EventsArrays.mat'))
 stimonset = EventsArray['stimonset'].squeeze()
 stimoffset = EventsArray['stimoffset'].squeeze()
 responset = EventsArray['responset'].squeeze()
@@ -50,4 +50,4 @@ Events['sample'] = sample
 Events['cresp'] = cresp
 
 #Instantiate Subject class for this subject
-ST26 = subj_globals.load_datafile(DTdir, subj, block, DTdir, elecs, srate,  Events)
+ST26 = subj_globals.load_datafile(subj, block, DTdir, elecs, srate,  Events)
