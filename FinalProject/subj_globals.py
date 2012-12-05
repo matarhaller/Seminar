@@ -9,6 +9,7 @@ import datetime
 import cPickle
 import upfirdn
 import h5py
+import scipy.signal
 
 def create_CAR(dataobj, grouping): 
 	# trying to implement in cython because slow. see CARcython.pyx
@@ -158,6 +159,63 @@ class Subject():
 		cPickle.dump(self, output, -1)
 		output.close()
 		self.logit('saved %s' %(fullfilename))
+
+	def do_hilbert(self, f1, f2):
+		"""
+		filters signal using a flat gaussian and returns analytic amplitude
+		INPUT:
+			f1, f2 = upper and lower bounds to filter
+		signal is in the time domain
+		will run only after CAR has been calculated
+		"""
+		#load in gdat data
+		f = h5py.File(self.gdat,'a')
+		try:
+			gdat = f['CAR']['gdat_CAR']
+		except:
+			print "can't do hilbert until calculate CAR"
+			return
+
+		subgroup = f.create_group("hilbert")
+		aa = subgroup.create_dataset('analyticamp', shape = gdat.shape, dtype = gdat.dtype)
+
+		max_freq = self.srate / 2
+		df = 2 * max_freq / max(gdat.shape)
+		center_freq = (f1 + f2) / 2
+		filter_width = f2 - f1
+
+		x = np.arange(0, max_freq, df)
+
+		gauss = exp( - (x - center_freq)**2)
+		cnt_gauss = round(center_freq / df)
+		flat_padd = round(filter_width / df)
+		padd_left = math.floor(flat_padd / 2)
+		padd_right = math.ceil(flat_padd / 2)
+		our_wind = np.hstack((gauss[(padd_left+1):cnt_gauss], np.ones(flat_padd), gauss[(cnt_gauss+1):(-1-padd_right)]))
+
+		our_wind = np.hstack((our_wind, np.zeros(max(gdat.shape)-len(our_wind))))
+
+		y = np.fft.fft(gdat[0,:]) #SUPER SLOW EVEN WHEN ONLY RUNNING ON 1 ELEC
+
+		our_wind[1] = our_wind[1] / 2 
+		our_wind = tile(our_wind, (1, 1))*2
+
+		aa = np.ifft(y.*our_wind, axis = 2)
+
+
+
+
+
+
+
+	def makeTrialsMTX(self,Params):
+		#baseline corrects and makes a trialsmtx (not by conditions)
+		#takes hilbert or something
+
+
+	def singletrials(self):
+		self.TrialsMTX
+
 
 #start up functions
 def make_datafile(pathtodata, DTdir):
