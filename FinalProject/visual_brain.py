@@ -2,11 +2,18 @@ import mayavi.mlab as mlab
 import numpy as np
 import scipy.io
 import os
+import subj_globals
 
-DTdir = '/Users/matar/Documents/Courses/Python/data/ST26_decision'
+subj = 'ST26'
+block = 'decision'
+DTdir = os.path.join('/Users/matar/Documents/Courses/Python/data/', subj + '_' + block)
+
+dataobj = subj_globals.load_datafile(subj, block, DTdir)
+
+
 # load data
-data = scipy.io.loadmat(os.path.join(DTdir, 'cortex.mat'), struct_as_record = True)
-elecmatrix = scipy.io.loadmat(os.path.join(DTdir, 'elecmatrix.mat'))
+data = scipy.io.loadmat(os.path.join(dataobj.DTdir, 'cortex.mat'), struct_as_record = True)
+elecmatrix = scipy.io.loadmat(os.path.join(dataobj.DTdir, 'elecmatrix.mat'))
 
 # xyz coordinates of cortex surface vertices (numpy array, 3 columns)
 brain = data['cortex']['vert'][0,0]
@@ -50,8 +57,8 @@ def picker_callback(picker):
 			# make selected electrode green
 			selectedpoint.mlab_source.set(x =x, y = y, z = z)
 
-			#mlab.points3d(x, y, z, color =(0,0,0), resolution = 20, scale_factor =3)
-			return point_id
+			dataobj.plot_trace(point_id)
+
 
 picker = figure.on_mouse_pick(picker_callback)
 # decrease the tolerance so that can easily select precise point

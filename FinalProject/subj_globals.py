@@ -227,7 +227,7 @@ class Subject():
 		output.close()
 		self.logit('saved %s' %(fullfilename))
 
-	def makeTrialsMTX(self,elec,raw = 'CAR', Params=dict()):
+	def makeTrialsMTX(self,elec,raw, Params):
 		#baseline corrects and makes a trialsmtx (not by conditions)
 		#takes hilbert or something.
 		#does it for an electrode, then stores it. before recalculates, checks that hasn't already been calculated
@@ -238,8 +238,7 @@ class Subject():
 		INPUT:
 			elec - electrode number
 			raw - if to calculate from raw trace ('CAR') or 'from hilbert' 
-				(optional, default 'CAR')
-			Params - dictionary of onset/offset times for trial and for baseline (optional)
+			Params - dictionary of onset/offset times for trial and for baseline in ms
 		"""
 
 		# load data file
@@ -251,16 +250,11 @@ class Subject():
 			print 'either ' + raw + " not supported as 'raw' argument or elec out of bounds"
 			return
 
-		#default Params:
-		if not Params: #empty dict
-			Params['st'] = 0		#start time point (ms)
-			Params['en'] = 3000		#end time point (ms)
-			Params['bl_st'] = -250	#baseline start (ms)
-			Params['bl_en'] = -50	#basline end (ms)
-
 		# convert Params and Events to sampling rate
-		for k in Params.keys():
-			Params[k] = round(Params[k] / 1000 * self.srate)
+		st = int(round(Params['st'] / 1000 * self.srate))
+		en = int(round(Params['en'] / 1000 * self.srate))
+		bl_st = int(round(Params['bl_st'] / 1000 * self.srate))
+		bl_en = int(round(Params['bl_en'] / 1000 * self.srate))
 
 		self.resampleEvents()
 
@@ -273,7 +267,8 @@ class Subject():
 
 		#get size/shape arguments
 		Ntrials = len(trials)
-		triallength = Params['en'] - Params['st']
+		#triallength = Params['en'] - Params['st']
+		triallength = en - st
 
 		# create data:
 		# if dataMTX already exists,  load it. if not, then calculate.
@@ -299,13 +294,17 @@ class Subject():
 		#conditions = np.unique(cond)
 
 		#define onset times per trial
-		st_tm = self.Events['stimonset'][trials]+Params['st']
-		en_tm = self.Events['stimonset'][trials]+Params['en']
+		#st_tm = self.Events['stimonset'][trials]+Params['st']
+		st_tm = self.Events['stimonset'][trials]+st
+		#en_tm = self.Events['stimonset'][trials]+Params['en']
+		en_tm = self.Events['stimonset'][trials]+en
 
 		#define baseline per trial
-		bl_st_tm = self.Events['stimonset'][trials]+Params['bl_st']
-		bl_en_tm = self.Events['stimonset'][trials]+Params['bl_en']
-		
+		#bl_st_tm = self.Events['stimonset'][trials]+Params['bl_st']
+		bl_st_tm = self.Events['stimonset'][trials]+bl_st
+		bl_en_tm = self.Events['stimonset'][trials]+bl_en
+		#bl_en_tm = self.Events['stimonset'][trials]+Params['bl_en']
+
 		#make data matrix
 		for i, x in enumerate(st_tm):
 			window = np.arange(st_tm[i], en_tm[i]).astype(int)
@@ -322,18 +321,29 @@ class Subject():
 			elec - electrode number
 			raw - if to calculate from raw trace ('CAR') or 'from hilbert' 
 				(optional, default 'CAR')
-			Params - dictionary of onset/offset times for trial and for baseline (optional)
+			Params - dictionary of onset/offset times for trial and for baseline. (optional)
 		"""
-		dataMTX = self.TrialsMTX(elec, raw, Params)
+		#default Params
+		if not Params: #empty dict
+			print 'loading default Params'
+			Params['st'] = 0		#start time point (ms)
+			Params['en'] = 3000		#end time point (ms)
+			Params['bl_st'] = -250	#baseline start (ms)
+			Params['bl_en'] = -50	#basline end (ms)
+		
+		dataMTX = self.makeTrialsMTX(elec, raw, Params)
+
+		st = int(round(Params['st'] / 1000 * self.srate))
+		en = int(round(Params['en'] / 1000 * self.srate))
+		bl_st = int(round(Params['bl_st'] / 1000 * self.srate))
+		bl_en = int(round(Params['bl_en'] / 1000 * self.srate))
+		
+		#x = np.arange(Params['st'], Params['en'])
+		x = np.arange(st, en)
 
 		plot_tp = 200 / 1000 * self.srate
-		cut = 500 / 1000 * self.srate
-
-		# convert Params to srate
-		for k in Params.keys():
-			Params[k] = round(Params[k] / 1000 * self.srate)
-
-		x = np.array(range(Params['st'], Params['en']+1))
+		cue = 500 / 1000 * self.srate
+		
 		f, ax = plt.subplots(1,1)
 		ax.axhline(y = 0,color = 'k',linewidth=2)
 		ax.axvline(x = 0,color='k',linewidth=2)
@@ -341,11 +351,13 @@ class Subject():
 		ax.axvline(x = cue+cue,color = 'gray',linewidth = 2)
 		ax.axvspan(cue, cue+cue, facecolor='0.5', alpha=0.25,label = 'cue')
 
-		ax.plot(x, dataMTX, linewidth = 2, color = 'blue')
+		ax.plot(x, np.mean(dataMTX,0), linewidth = 2, color = 'blue')
 
-		ax.set_xlim(Params['st'], Params['en'])
+		#ax.set_xlim(Params['st'], Params['en'])
+		ax.set_xlim(st, en)
 		ax.xaxis.set_ticklabels(['', '0', '','500', '', '1000', '', '1500', '', '2000','','2500','', '3000'],minor=False)
-		ax.xaxis.set_ticks(range(Params['st'],Params['en'],plot_tp))
+		#ax.xaxis.set_ticks(np.arange(Params['st'],Params['en'],plot_tp))
+		ax.xaxis.set_ticks(np.arange(st, en, plot_tp))
 		ax.xaxis.set_tick_params(labelsize = 14)
 		ax.yaxis.set_tick_params(labelsize=14)
 		xticklabels = plt.getp(plt.gca(), 'xticklabels')
@@ -357,9 +369,6 @@ class Subject():
 			ax.spines[pos].set_edgecolor('gray')
 			ax.get_xaxis().tick_bottom()
 			ax.get_yaxis().tick_left()
-
-		plt.show()
-
 
 #startup functions
 def make_datafile(pathtodata, DTdir):
