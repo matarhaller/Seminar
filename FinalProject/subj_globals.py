@@ -166,7 +166,7 @@ class Subject():
 
 		#methods defined outside (so can eventually optimize)
 		self.create_CAR = create_CAR #common ave ref method (defined above)
-		self.analytic_amp = analytic_amp #aa method (defined above)
+		self.analytic_amp = analytic_amp #aa method (defined above) only works on cluster, too heavy
 
 		self.gdat = os.path.join(DTdir, 'gdat.hdf5') #filepath to hdf5 file containing raw data
 
@@ -369,6 +369,7 @@ class Subject():
 			ax.spines[pos].set_edgecolor('gray')
 			ax.get_xaxis().tick_bottom()
 			ax.get_yaxis().tick_left()
+		plt.show()
 
 #startup functions
 def make_datafile(pathtodata, DTdir):

@@ -4,12 +4,14 @@ import scipy.io
 import os
 import subj_globals
 
-subj = 'ST26'
-block = 'decision'
-DTdir = os.path.join('/Users/matar/Documents/Courses/Python/data/', subj + '_' + block)
+import ST26
 
-dataobj = subj_globals.load_datafile(subj, block, DTdir)
+#subj = 'ST26'
+#block = 'decision'
+#DTdir = os.path.join('/Users/matar/Documents/Courses/Python/data/', subj + '_' + block)
 
+#dataobj = subj_globals.load_datafile(subj, block, DTdir)
+dataobj = ST26.ST26
 
 # load data
 data = scipy.io.loadmat(os.path.join(dataobj.DTdir, 'cortex.mat'), struct_as_record = True)

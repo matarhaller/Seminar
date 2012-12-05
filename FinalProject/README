@@ -1,0 +1,22 @@
+This code will implement the first preprocessing steps for raw ECoG data.
+description of contents:
+
+subj_globals.py - defines the Subject class and associated methods (including plotting)
+
+ST26.py - either creates or loads the an instantiation of the Subject class with parameters relevant to subject ST26. Calls on subj_globals.py
+
+visualize_brain.py - calls on ST26.py to plot activity on cortex with electrodes 
+
+from the command line just run:
+python visualize_brain.py
+You will need to edit pathtodata in ST26.py to match where your data is.
+Also edit DTdir to match where you want the analyses to go.
+
+clicking on an electrode will plot a figure showing its mean activity across trials
+
+future steps:
+- implement create_CAR and analytic_amp methods in cython (make them faster)
+- make analytic amplitude use fftw (faster) - and then it will be usable
+- implement option for plotting traces by conditions
+- implement single trial images
+- make it so can load arbitrary subject without changing imported module in visual_brain.py (make it an argument to the function) use arg parse to give it from the command line
