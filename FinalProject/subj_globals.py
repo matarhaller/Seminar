@@ -11,7 +11,7 @@ import upfirdn
 import h5py
 
 def create_CAR(dataobj, grouping): 
-	# cython???
+	# trying to implement in cython because slow. see CARcython.pyx
 	""" 
 	Create common average reference data matrix, add to class.
 	Calcuates CAR from only good electrodes, removes CAR from all elecs
