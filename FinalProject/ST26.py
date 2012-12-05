@@ -12,7 +12,7 @@ block = 'decision'
 DTdir = os.path.join('/Users/matar/Documents/Courses/Python/data/', subj + '_' + block)
 pathtodata = '/Users/matar/Documents/MATLAB/DATA/Stanford/ST26/data/decision/gdat.mat'
 
-#try and make datafile (hdf5 file of gdat)
+#make or load datafile (hdf5 file of gdat)
 subj_globals.make_datafile(pathtodata,DTdir)
 
 ANsrate = 2.4414e04
@@ -22,28 +22,19 @@ bad_elecs = bad_elecs-1 #make it 0 ordered
 num_elecs = 96
 elecs = np.setdiff1d(np.arange(num_elecs),bad_elecs)
 
-stimonset = scipy.io.loadmat('/Users/matar/Documents/Courses/Python/Seminar/FinalProject/stimonset.mat')
-stimonset = stimonset['stimonset'].squeeze()
+#make Events dictionary from existing .mat files
+EventsArray = scipy.io.load(os.path.join(DTdir, 'EventsArray.mat'))
+stimonset = EventsArray['stimonset'].squeeze()
+stimoffset = EventsArray['stimoffset'].squeeze()
+responset = EventsArray['responset'].squeeze()
+respoffset = EventsArray['respoffset'].squeeze()
+badevent = EventsArray['badevent'].squeeze()
+resp = EventsArray['resp'].squeeze()
 
-stimoffset = scipy.io.loadmat('/Users/matar/Documents/Courses/Python/Seminar/FinalProject/stimoffset.mat')
-stimoffset = stimoffset['stimoffset'].squeeze()
-
-responset = scipy.io.loadmat('/Users/matar/Documents/Courses/Python/Seminar/FinalProject/responset.mat')
-responset = responset['responset'].squeeze()
-
-respoffset = scipy.io.loadmat('/Users/matar/Documents/Courses/Python/Seminar/FinalProject/respoffset.mat')
-respoffset = respoffset['respoffset'].squeeze()
-
-badevent = scipy.io.loadmat('/Users/matar/Documents/Courses/Python/Seminar/FinalProject/badevent.mat')
-badevent = badevent['badevent'].squeeze()
-
-resp = scipy.io.loadmat('/Users/matar/Documents/Courses/Python/Seminar/FinalProject/resp.mat')
-resp = resp['resp'].squeeze()
-
-sample = scipy.io.loadmat('/Users/matar/Documents/Courses/Python/Seminar/FinalProject/SAMPLE.mat')
+sample = scipy.io.loadmat(os.path.join(DTdir, 'SAMPLE.mat'))
 sample = sample['SAMPLE'].squeeze()
 
-cresp = scipy.io.loadmat('/Users/matar/Documents/Courses/Python/Seminar/FinalProject/CORRECT.mat')
+cresp = scipy.io.loadmat(os.path.join(DTdir, 'CORRECT.mat'))
 cresp = cresp['CORRECT'].squeeze().tolist()
 cresp = np.array([x[0] for x in cresp])
 
@@ -58,8 +49,5 @@ Events['badevent'] = badevent
 Events['sample'] = sample
 Events['cresp'] = cresp
 
+#Instantiate Subject class for this subject
 ST26 = subj_globals.load_datafile(DTdir, subj, block, DTdir, elecs, srate,  Events)
-
-
-#save_dataobj(ST22)
-#ST22 = cPickle.load(open("/Users/matar/Documents/PyTest/ST01/data/test/alldata.pic", 'r'))

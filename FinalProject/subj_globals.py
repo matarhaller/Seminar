@@ -175,18 +175,18 @@ def make_datafile(pathtodata, DTdir):
 		pathtodata - where is the original gdat.mat file
 		DTdir - the data directory where the new data will be saved
 	"""
+	if not os.path.exists(DTdir):
+		os.makedirs(DTdir) #create DT folder if it doesn't exist
+		print 'made ' + DTdir
 	if not os.path.exists(os.path.join(DTdir, 'gdat.hdf5')):
-		try:
-			os.makedirs(DTdir) #create DT folder if it doesn't exist
- 			print 'made ' + DTdir
-		finally:
-			data = scipy.io.loadmat(pathtodata) #load raw data
-			gdat = data['gdat']
+		print 'making ' + os.path.join(DTdir, 'gdat.hdf5')
+		data = scipy.io.loadmat(pathtodata) #load raw data
+		gdat = data['gdat']
 
-			gdatfilepath = os.path.join(DTdir, 'gdat.hdf5')
-			f = h5py.File(gdatfilepath)
-			dset = f.create_dataset('gdat', data = gdat)
-			f.close()
+		gdatfilepath = os.path.join(DTdir, 'gdat.hdf5')
+		f = h5py.File(gdatfilepath)
+		dset = f.create_dataset('gdat', data = gdat)
+		f.close()
 	else:
 		print os.path.join(DTdir, 'gdat.hdf5') + ' already exists'
 
