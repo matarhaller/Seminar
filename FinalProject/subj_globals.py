@@ -113,37 +113,19 @@ class Subject():
 		logf.flush()
 		logf.close()
 
-	def resample(self, srate_new=1000): #NEED TO DO USING UPFIRDN
+	def resampleEvents(self): 
 		"""
-		Resamples srate to srate_new. 
+		Resamples Events ANsrate to match data srate
 		Updates Events ANsrate.
 		"""
-		#find rational fraction for resampling
-		p, q = (srate_new / self.srate).as_integer_ratio()
-		N = 10
-		pqmax = max(p,q)
-
-		#design filter
-		fc = 1/2/pqmax
-		L = 2*N*pqmax + 1
-		h = p 
-
-		y = upfirdn.upfirdn(x, h, p, q)
-
-		#INSERT UPFIRDN HERE
-
-		self.logit('resampled gdat from %f to %f' %(srate, srate_new))
-
-		#for Events
 		for k in self.Events.keys():
 			if ismember(k, set('stimonset','stimoffset','responset','respoffset')):
-				self.Events[k] = round(self.Events[k] / self.Events['ANsrate'] * srate_new)
-		self.logit('resampled Events from %f to %f' %(Events['ANsrate'], srate_new))
+				self.Events[k] = round(self.Events[k] / self.Events['ANsrate'] * self.srate)
+		self.logit('resampled Events from %f to %f' %(Events['ANsrate'], self.srate))
 		
-		#update srate, ANsrate
-		self.srate = srate_new
+		#update ANsrate
 		Events['ANsrate'] = srate_new
-		self.logit("update self.srate, Events['ANsrate'] to %f" %(srate_new))
+		self.logit("updated Events['ANsrate'] to %f" %(srate))
 
 	def calc_acc(self):
 		"""
