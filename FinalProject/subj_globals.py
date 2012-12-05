@@ -10,6 +10,8 @@ import cPickle
 import upfirdn
 import h5py
 import scipy.signal
+import matplotlib.pyplot as plt
+
 
 def create_CAR(dataobj, grouping): 
 	# trying to implement in cython because slow. see CARcython.pyx
@@ -37,9 +39,11 @@ def create_CAR(dataobj, grouping):
 	# preallocate gdat_CAR, CAR, CAR_all, gdat_CAR_group
 	# add to gdat file as subgroups
 	subgroup = f.create_group("CAR")
-	gdat_CAR = subgroup.create_dataset('gdat_CAR', data = gdat)
+	gdat_CAR = subgroup.create_dataset('gdat', data = gdat) 
+	#keep gdat name within CAR subgroup so that can be easily accessed later.
 	CAR = subgroup.create_dataset('CAR', shape = (Ngroups, max(gdat.shape)), dtype = gdat.dtype)
 	CAR_all = subgroup.create_dataset('CAR_all', shape = (1, max(gdat.shape)), dtype = gdat.dtype)
+	gdat_CAR_group = subgroup.create_dataset('CAR_group', shape = gdat.shape, dtype = gdat.dtype)
 
 	# make lookup table of electrode groupings 
 	# according to how plugged in on the preamplifier during recording
@@ -84,6 +88,64 @@ def create_CAR(dataobj, grouping):
 	#log the change
 	dataobj.logit('created CAR - grouping  = %i\nadded to %s' %(grouping, dataobj.gdat))
 
+
+def analytic_amp(dataobj, elec, f1=70, f2=150):
+	"""
+	filters signal using a flat gaussian then does the hilbert transform.
+	returns analytic amplitude.
+	runs on 1 electrode
+	slow because of fft and ifft - need to fix (use fftw)
+	INPUT:
+		elec = electrode number
+		f1, f2 = upper and lower bounds to filter
+				defaults to 70Hz, 150Hz (broadband high gamma)
+	signal is in the time domain
+	will run only after CAR has been calculated
+	"""
+	#load in gdat data
+	f = h5py.File(dataobj.gdat,'a')
+	try:
+		gdat = f['CAR']['gdat_CAR']
+	except:
+		print "won't do hilbert until calculate CAR"
+		return
+
+	band = gdat_CAR[elec,:] #1 electrode's data
+
+	subgroup = f.create_group("hilbert")
+	name = 'e'+str(elec)
+	aa = subgroup.create_dataset(name, shape = band.shape, dtype = band.dtype)
+
+	max_freq = dataobj.srate / 2
+	df = 2 * max_freq / max(band.shape)
+	center_freq = (f1 + f2) / 2
+	filter_width = f2 - f1
+
+	x = np.arange(0, max_freq, df)
+
+	gauss = np.exp( - (x - center_freq)**2)
+	cnt_gauss = round(center_freq / df)
+	flat_padd = round(filter_width / df)
+	padd_left = math.floor(flat_padd / 2)
+	padd_right = math.ceil(flat_padd / 2)
+	our_wind = np.hstack((gauss[(padd_left+1):cnt_gauss], np.ones(flat_padd), gauss[(cnt_gauss+1):(-1-padd_right)]))
+
+	our_wind = np.hstack((our_wind, np.zeros(max(gdat.shape)-len(our_wind))))
+
+	y = scipy.fftpack._fftpack.zfft(band) #slow, check fftw options. gives diff answer from matlab.
+
+	our_wind[1] = our_wind[1] / 2 
+	#our_wind = np.tile(our_wind, (0, 1))*2 #should be (size(input, 1),1)
+	our_wind = our_wind*2
+
+	aa = np.fft.ifft(np.multiply(y,our_wind)) #TOO SLOW
+
+	#close file
+	f.close()
+
+	#log the change
+	dataobj.logit('hilbert transform - elec %i\n\t%iHz - %iHz\nadded to %s' %(elec, f1, f2, dataobj.gdat))
+
 class Subject():
 	"""
 	Makes an Subject object with all of the data parameters and raw data.
@@ -102,7 +164,10 @@ class Subject():
 		self.logfile = os.path.join(self.DTdir, 'logfile.log')
 		self.logit('created %s - %s' %(self.subj, self.block))
 
+		#methods defined outside (so can eventually optimize)
 		self.create_CAR = create_CAR #common ave ref method (defined above)
+		self.analytic_amp = analytic_amp #aa method (defined above)
+
 		self.gdat = os.path.join(DTdir, 'gdat.hdf5') #filepath to hdf5 file containing raw data
 
 	def logit(self, message):
@@ -119,19 +184,21 @@ class Subject():
 		Resamples Events ANsrate to match data srate
 		Updates Events ANsrate.
 		"""
+		## need to implement resampling for data itself too - upfirdn requires making filter.
+		labels = {'stimonset','stimoffset','responset','respoffset'}
 		for k in self.Events.keys():
-			if ismember(k, set('stimonset','stimoffset','responset','respoffset')):
-				self.Events[k] = round(self.Events[k] / self.Events['ANsrate'] * self.srate)
-		self.logit('resampled Events from %f to %f' %(Events['ANsrate'], self.srate))
+			if k in labels:
+				self.Events[k] = np.round(self.Events[k] / self.Events['ANsrate'] * self.srate)
+		self.logit('resampled Events from %f to %f' %(self.Events['ANsrate'], self.srate))
 		
 		#update ANsrate
-		Events['ANsrate'] = srate_new
-		self.logit("updated Events['ANsrate'] to %f" %(srate))
+		self.Events['ANsrate'] = self.srate
+		self.logit("updated Events['ANsrate'] to %f" %(self.srate))
 
 	def calc_acc(self):
 		"""
 		calculate subject accuracy per trial, store in Events, print mean acc
-		drops ambiguous stimuli from calculation
+		drops ambiguous stimuli from calculation. Events['acc'] will be shorter than other Events values because only calculates for nonambiguous stimuli
 		"""
 		good = self.Events['badevent']== 0
 		notambig = self.Events['cresp'] != 'u'
@@ -160,64 +227,141 @@ class Subject():
 		output.close()
 		self.logit('saved %s' %(fullfilename))
 
-	def do_hilbert(self, f1, f2):
+	def makeTrialsMTX(self,elec,raw = 'CAR', Params=dict()):
+		#baseline corrects and makes a trialsmtx (not by conditions)
+		#takes hilbert or something.
+		#does it for an electrode, then stores it. before recalculates, checks that hasn't already been calculated
+		#currently drops ambiguous stimuli - need to decide if to keep and how
+		#makes a new file TrialsMTX.hdf5 with the dataMTX for each elec
+		#need to implement by conditions
 		"""
-		filters signal using a flat gaussian and returns analytic amplitude
 		INPUT:
-			f1, f2 = upper and lower bounds to filter
-		signal is in the time domain
-		will run only after CAR has been calculated
+			elec - electrode number
+			raw - if to calculate from raw trace ('CAR') or 'from hilbert' 
+				(optional, default 'CAR')
+			Params - dictionary of onset/offset times for trial and for baseline (optional)
 		"""
-		#load in gdat data
+
+		# load data file
 		f = h5py.File(self.gdat,'a')
 		try:
-			gdat = f['CAR']['gdat_CAR']
+			gdat = f[raw]['gdat_CAR'] #need to rerun CAR so gdat_CAR can be gdat
+			band = gdat[elec,:]
 		except:
-			print "can't do hilbert until calculate CAR"
+			print 'either ' + raw + " not supported as 'raw' argument or elec out of bounds"
 			return
 
-		subgroup = f.create_group("hilbert")
-		aa = subgroup.create_dataset('analyticamp', shape = gdat.shape, dtype = gdat.dtype)
+		#default Params:
+		if not Params: #empty dict
+			Params['st'] = 0		#start time point (ms)
+			Params['en'] = 3000		#end time point (ms)
+			Params['bl_st'] = -250	#baseline start (ms)
+			Params['bl_en'] = -50	#basline end (ms)
 
-		max_freq = self.srate / 2
-		df = 2 * max_freq / max(gdat.shape)
-		center_freq = (f1 + f2) / 2
-		filter_width = f2 - f1
+		# convert Params and Events to sampling rate
+		for k in Params.keys():
+			Params[k] = round(Params[k] / 1000 * self.srate)
 
-		x = np.arange(0, max_freq, df)
+		self.resampleEvents()
 
-		gauss = exp( - (x - center_freq)**2)
-		cnt_gauss = round(center_freq / df)
-		flat_padd = round(filter_width / df)
-		padd_left = math.floor(flat_padd / 2)
-		padd_right = math.ceil(flat_padd / 2)
-		our_wind = np.hstack((gauss[(padd_left+1):cnt_gauss], np.ones(flat_padd), gauss[(cnt_gauss+1):(-1-padd_right)]))
+		# find correct trials
+		if not 'acc' in self.Events.keys():
+			self.calc_acc()
 
-		our_wind = np.hstack((our_wind, np.zeros(max(gdat.shape)-len(our_wind))))
+		correct = self.Events['acc'] == 1
+		trials = np.flatnonzero(correct)
 
-		y = np.fft.fft(gdat[0,:]) #SUPER SLOW EVEN WHEN ONLY RUNNING ON 1 ELEC
+		#get size/shape arguments
+		Ntrials = len(trials)
+		triallength = Params['en'] - Params['st']
 
-		our_wind[1] = our_wind[1] / 2 
-		our_wind = tile(our_wind, (1, 1))*2
+		# create data:
+		# if dataMTX already exists,  load it. if not, then calculate.
+		filename = os.path.join(self.DTdir, 'TrialsMTX.hdf5')
+		f = h5py.File(filename, 'a')
+		name = 'e'+str(elec)
 
-		aa = np.ifft(y.*our_wind, axis = 2)
+		try:
+			f[raw] # see if any electrode with that preprocessing has been run
+			try: # see if this particular electrode has been run before
+				dataMTX = f[raw][name]
+				print 'loading electrode: ' + name
+				return dataMTX
+			except: #preprocess has been done, elec hasn't
+				print 'creating electrode: ' + name
+				dataMTX = f[raw].create_dataset(name, shape = (Ntrials, triallength), dtype = band.dtype)
+		except: # all new
+			print 'creating group: ' + raw + ' and electrode: ' + name
+			subgroup = f.create_group(raw)
+			dataMTX = subgroup.create_dataset(name, shape = (Ntrials, triallength), dtype = band.dtype)
+		
+		#cond = Events['sample'][trials]
+		#conditions = np.unique(cond)
+
+		#define onset times per trial
+		st_tm = self.Events['stimonset'][trials]+Params['st']
+		en_tm = self.Events['stimonset'][trials]+Params['en']
+
+		#define baseline per trial
+		bl_st_tm = self.Events['stimonset'][trials]+Params['bl_st']
+		bl_en_tm = self.Events['stimonset'][trials]+Params['bl_en']
+		
+		#make data matrix
+		for i, x in enumerate(st_tm):
+			window = np.arange(st_tm[i], en_tm[i]).astype(int)
+			blwindow = np.arange(bl_st_tm[i], bl_en_tm[i]).astype(int)
+			dataMTX[i,:] = band[window] - np.mean(band[blwindow])
+
+		self.logit('created dataMTX for electrode %i' %(elec))
+		return dataMTX
+
+	def plot_trace(self, elec, raw = 'CAR', Params = dict()):
+		"""
+		plots trace for the trial duration using TrialsMTX
+		INPUT:
+			elec - electrode number
+			raw - if to calculate from raw trace ('CAR') or 'from hilbert' 
+				(optional, default 'CAR')
+			Params - dictionary of onset/offset times for trial and for baseline (optional)
+		"""
+		dataMTX = self.TrialsMTX(elec, raw, Params)
+
+		plot_tp = 200 / 1000 * self.srate
+		cut = 500 / 1000 * self.srate
+
+		# convert Params to srate
+		for k in Params.keys():
+			Params[k] = round(Params[k] / 1000 * self.srate)
+
+		x = np.array(range(Params['st'], Params['en']+1))
+		f, ax = plt.subplots(1,1)
+		ax.axhline(y = 0,color = 'k',linewidth=2)
+		ax.axvline(x = 0,color='k',linewidth=2)
+		ax.axvline(x = cue,color = 'gray',linewidth = 2)
+		ax.axvline(x = cue+cue,color = 'gray',linewidth = 2)
+		ax.axvspan(cue, cue+cue, facecolor='0.5', alpha=0.25,label = 'cue')
+
+		ax.plot(x, dataMTX, linewidth = 2, color = 'blue')
+
+		ax.set_xlim(Params['st'], Params['en'])
+		ax.xaxis.set_ticklabels(['', '0', '','500', '', '1000', '', '1500', '', '2000','','2500','', '3000'],minor=False)
+		ax.xaxis.set_ticks(range(Params['st'],Params['en'],plot_tp))
+		ax.xaxis.set_tick_params(labelsize = 14)
+		ax.yaxis.set_tick_params(labelsize=14)
+		xticklabels = plt.getp(plt.gca(), 'xticklabels')
+		yticklabels = plt.getp(plt.gca(), 'yticklabels')
+		plt.setp(xticklabels, fontsize=14, weight='bold')
+		plt.setp(yticklabels, fontsize=14, weight='bold')
+
+		for pos in ['top','bottom','right','left']:
+			ax.spines[pos].set_edgecolor('gray')
+			ax.get_xaxis().tick_bottom()
+			ax.get_yaxis().tick_left()
+
+		plt.show()
 
 
-
-
-
-
-
-	def makeTrialsMTX(self,Params):
-		#baseline corrects and makes a trialsmtx (not by conditions)
-		#takes hilbert or something
-
-
-	def singletrials(self):
-		self.TrialsMTX
-
-
-#start up functions
+#startup functions
 def make_datafile(pathtodata, DTdir):
 	"""
 	make hdf5 data file and its encompassing data folder (DTdir)
@@ -243,7 +387,7 @@ def make_datafile(pathtodata, DTdir):
 
 def load_datafile(subj, block, DTdir, elecs='', srate='',  Events=''):
 	"""
-	Loads instance of Subject data class if it has already been created, otherwise creates it with given parameters.
+	Loads instance of Subject data class if it has already been created, otherwise creates it with given parameters and saves in DTdir.
 	elecs, srate, and Events need only be supplied if creating the instance, otherwise default to null because already exist in saved instance.
 	"""
 	pkl_filepath = os.path.join(DTdir, (subj + '_' + block + '.pkl'))
@@ -255,4 +399,6 @@ def load_datafile(subj, block, DTdir, elecs='', srate='',  Events=''):
 		return subject_instance
 	else:
 		print 'creating %s %s instance of Subject class' %(subj, block)
-		return Subject(subj, block, elecs, srate, DTdir, Events)
+		subject = Subject(subj, block, elecs, srate, DTdir, Events)
+		subject.save_dataobj() #saves it in DTdir
+		return subject
