@@ -10,14 +10,14 @@ import cPickle
 import h5py
 import scipy.signal
 import matplotlib.pyplot as plt
-
+from CARcython import CARcython
 
 def create_CAR(dataobj, grouping): 
-	# trying to implement in cython because slow. see CARcython.pyx
 	""" 
 	Create common average reference data matrix, add to class.
 	Calcuates CAR from only good electrodes, removes CAR from all elecs
 	Adds subgroups to gdat hdf5 file - so can only be run once (becuase can't overwrite subgroups without first deleting them)
+	Calls CARcython for looping on electrodes
 
 	INPUT:
 		dataobj  -  from the Subject class
@@ -29,11 +29,12 @@ def create_CAR(dataobj, grouping):
 	f = h5py.File(dataobj.gdat,'a')
 	gdat = f['gdat']
 
-	# define size parameters
+	# define size 
 	numelecs = min(gdat.shape) # total number of electrodes
 	chRank = np.zeros(numelecs) 
 	chRank[dataobj.elecs] = 1 # which electrodes are good
-	Ngroups = math.ceil(dataobj.elecs[-1]/grouping)
+	chRank = chRank.astype(int)
+	Ngroups = int(math.ceil(dataobj.elecs[-1]/grouping))
 
 	# preallocate gdat_CAR, CAR, CAR_all, gdat_CAR_group
 	# add to gdat file as subgroups
@@ -48,6 +49,12 @@ def create_CAR(dataobj, grouping):
 	# according to how plugged in on the preamplifier during recording
 	groups =np.array([x*np.ones(grouping) for x in np.arange(Ngroups)])
 	groups = groups.flatten()
+	groups = groups.astype(int)
+
+	#call cythonCAR for actual math:
+	CAR_all, gdat_CAR, CAR = CARcython(elecs, chRank, groups, Ngroups, numelecs, dataobj.gdat)
+
+
 
 	# subtract the mean from each electrode (including bad)
 	# then sum gdat by group only for valid electrodes
@@ -269,21 +276,21 @@ class Subject():
 		# create data:
 		# if dataMTX already exists,  load it. if not, then calculate.
 		filename = os.path.join(self.DTdir, 'TrialsMTX.hdf5')
-		f = h5py.File(filename, 'a')
+		g = h5py.File(filename, 'a')
 		name = 'e'+str(elec)
 
 		try:
-			f[raw] # see if any electrode with that preprocessing has been run
+			g[raw] # see if any electrode with that preprocessing has been run
 			try: # see if this particular electrode has been run before
-				dataMTX = f[raw][name]
+				dataMTX = g[raw][name]
 				print 'loading electrode: ' + name
 				return dataMTX
 			except: #preprocess has been done, elec hasn't
 				print 'creating electrode: ' + name
-				dataMTX = f[raw].create_dataset(name, shape = (Ntrials, triallength), dtype = band.dtype)
+				dataMTX = g[raw].create_dataset(name, shape = (Ntrials, triallength), dtype = band.dtype)
 		except: # all new
 			print 'creating group: ' + raw + ' and electrode: ' + name
-			subgroup = f.create_group(raw)
+			subgroup = g.create_group(raw)
 			dataMTX = subgroup.create_dataset(name, shape = (Ntrials, triallength), dtype = band.dtype)
 		
 		#cond = Events['sample'][trials]
@@ -308,6 +315,8 @@ class Subject():
 			dataMTX[i,:] = band[window] - np.mean(band[blwindow])
 
 		self.logit('created dataMTX for electrode %i' %(elec))
+		f.close()
+		g.close()
 		return dataMTX
 
 	def plot_trace(self, elec, raw = 'CAR', Params = dict()):
