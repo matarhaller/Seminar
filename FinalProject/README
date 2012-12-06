@@ -1,4 +1,4 @@
-This code will implement the first preprocessing steps for raw ECoG data.
+This code will implement some initial preprocessing steps for raw ECoG data.
 description of contents:
 
 subj_globals.py - defines the Subject class and associated methods (including plotting)
@@ -10,7 +10,7 @@ visualize_brain.py - calls on ST26.py to plot activity on cortex with electrodes
 from the command line just run:
 python visualize_brain.py
 You will need to edit pathtodata in ST26.py to match where your data is.
-Also edit DTdir to match where you want the analyses to go.
+Also in ST26.py edit DTdir to match where you want the analyses to go.
 
 clicking on an electrode will plot a figure showing its mean activity across trials
 

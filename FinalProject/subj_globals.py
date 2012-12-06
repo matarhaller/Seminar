@@ -7,7 +7,6 @@ import scipy.io
 import cython
 import datetime
 import cPickle
-import upfirdn
 import h5py
 import scipy.signal
 import matplotlib.pyplot as plt
@@ -49,9 +48,6 @@ def create_CAR(dataobj, grouping):
 	# according to how plugged in on the preamplifier during recording
 	groups =np.array([x*np.ones(grouping) for x in np.arange(Ngroups)])
 	groups = groups.flatten()
-
-	# pull three loops out into sep functions - only they will be in cython and compiled. write them in a separate file completely - in setup.py run them and compile them separately. can just feed it in the file object to the gdat or the filepath. in cython code can open the db and do for item in db. from comiled cython code import blah, on this file object/path do whatever.
-	#write cython code (code.pyx) where do cdef to define function, run cython on it one time (definied in setup.py) - makes code.co file - then in here (python file) from code import function. now function is a python function (reads it in from code.so) or look at numexpr.
 
 	# subtract the mean from each electrode (including bad)
 	# then sum gdat by group only for valid electrodes
@@ -305,7 +301,7 @@ class Subject():
 		bl_en_tm = self.Events['stimonset'][trials]+bl_en
 		#bl_en_tm = self.Events['stimonset'][trials]+Params['bl_en']
 
-		#make data matrix
+		#make data matrix (baseline corrected)
 		for i, x in enumerate(st_tm):
 			window = np.arange(st_tm[i], en_tm[i]).astype(int)
 			blwindow = np.arange(bl_st_tm[i], bl_en_tm[i]).astype(int)
@@ -369,6 +365,10 @@ class Subject():
 			ax.spines[pos].set_edgecolor('gray')
 			ax.get_xaxis().tick_bottom()
 			ax.get_yaxis().tick_left()
+
+		ax.set_xlabel("time (ms)")
+		ax.set_ylabel("uV")
+		ax.set_title('raw trace - electrode: %i' %(elec), fontsize = 18)
 		plt.show()
 
 #startup functions
