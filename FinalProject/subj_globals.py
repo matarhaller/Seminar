@@ -29,6 +29,12 @@ def create_CAR(dataobj, grouping):
 	f = h5py.File(dataobj.gdat,'a')
 	gdat = f['gdat']
 
+	# preallocate gdat_CAR  gdat_CAR_group
+	# add to gdat file as subgroups
+	subgroup = f.create_group("CAR")
+	gdat_CAR = subgroup.create_dataset('gdat', data = gdat)	#keep gdat name within CAR subgroup so that can be easily accessed later.
+	CAR_group = subgroup.create_dataset('CAR_group', shape = gdat.shape, dtype = gdat.dtype)
+
 	# define size 
 	numelecs = min(gdat.shape) # total number of electrodes
 	chRank = np.zeros(numelecs) 
@@ -36,26 +42,22 @@ def create_CAR(dataobj, grouping):
 	chRank = chRank.astype(int)
 	Ngroups = int(math.ceil(dataobj.elecs[-1]/grouping))
 
-	# preallocate gdat_CAR, CAR, CAR_all, gdat_CAR_group
-	# add to gdat file as subgroups
-	subgroup = f.create_group("CAR")
-	gdat_CAR = subgroup.create_dataset('gdat', data = gdat) 
-	#keep gdat name within CAR subgroup so that can be easily accessed later.
-	CAR = subgroup.create_dataset('CAR', shape = (Ngroups, max(gdat.shape)), dtype = gdat.dtype)
-	CAR_all = subgroup.create_dataset('CAR_all', shape = (1, max(gdat.shape)), dtype = gdat.dtype)
-	gdat_CAR_group = subgroup.create_dataset('CAR_group', shape = gdat.shape, dtype = gdat.dtype)
-
 	# make lookup table of electrode groupings 
 	# according to how plugged in on the preamplifier during recording
 	groups =np.array([x*np.ones(grouping) for x in np.arange(Ngroups)])
 	groups = groups.flatten()
 	groups = groups.astype(int)
 
-	#call cythonCAR for actual math:
-	CAR_all, gdat_CAR, CAR = CARcython(elecs, chRank, groups, Ngroups, numelecs, dataobj.gdat)
+	#call cythonCAR for actual math: (makes it a little faster, but not much because still accessing python objects inside)
+	CAR_all, CAR = CARcython(elecs, chRank, groups, Ngroups, numelecs, dataobj.gdat)
+
+	#put data in hdf5 file
+	CAR = subgroup.create_dataset('CAR', data = CAR)
+	CAR_all = subgroup.create_dataset('CAR_all', data= CAR_all)
 
 
 
+	"""
 	# subtract the mean from each electrode (including bad)
 	# then sum gdat by group only for valid electrodes
 	for e in dataobj.elecs:
@@ -84,6 +86,7 @@ def create_CAR(dataobj, grouping):
 	# remove total CAR for all electrodes (ungrouped)
 	for e in np.arange(numelecs):
 		gdat_CAR[e,:] = gdat_CAR[e,:] - CAR_all
+	"""
 
 	#close file
 	f.close()
@@ -197,6 +200,58 @@ class Subject():
 		#update ANsrate
 		self.Events['ANsrate'] = self.srate
 		self.logit("updated Events['ANsrate'] to %f" %(self.srate))
+
+	def resample(self, elec, srate_new=1000):
+		"""
+ 		Resamples srate to srate_new. 
+ 		based on matlab's resample function - might just wwant to take every other point (because still above nyquist)
+ 		input must be a vector - need to run it on 1 electrode (not on whole gdat)
+ 		"""
+ 		x = gdat[e,:] #need to define gdat
+
+ 		#find rational fraction for resampling
+		p, q = (srate_new / self.srate).as_integer_ratio()
+		N = 10 #matlab's default (weighted sum of 2*N*max(1,Q/P) samples of X to compute each sample of Y)
+		if p ==1 and q ==1: #not resampling
+			y = x
+			h = 1
+			return y
+
+		pqmax = max(p,q)
+
+		#design filter
+		if N > 0:
+			fc = 1 / 2 / pqmax
+			L = 2 * N * pqmax + 1
+			h = p * firls(L-1, [0 2*fc 2*fc 1], [1 1 0 0]).*kaiser(L,bta)')'
+		else:
+			L = p
+			h = np.ones(p)
+
+		Lhalf = (L-1) /2
+		Lx = len(x)
+
+		#delay output so downsampling by q hits center tap of filter
+		nz = math.floor(q - Lhalf % q)
+		z = np.zeros(nz)
+		h = np.hstack(z, h[:].transpose) #ensure its a row vector
+		Lhalf = Lhalf + nz
+
+		#number of samples removed from beginning of output sequence to compensate for delay of linear phase filter
+		delay = math.floor(math.ceil(Lhalf)/q)
+
+		#zero pad so output length exactly ceil(Lx*p/q)
+		nz1 = 0
+		while math.ceil(((Lx-1) * p + len(h) + nz1) / q) - delay < math.ceil(Lx* p / q):
+			nz1 = nz1+1
+
+		h = np.hstack(h, np.zeros(nz1))
+
+		y = upfirdn.upfirdn(x, h, p, q)
+
+		gdat[e,:] = y
+ 
+ 		self.logit('resampled electrod %i from %f to %f' %(elec, srate, srate_new))
 
 	def calc_acc(self):
 		"""
@@ -390,7 +445,7 @@ def make_datafile(pathtodata, DTdir):
 		DTdir - the data directory where the new data will be saved
 	"""
 	if not os.path.exists(DTdir):
-		os.makedirs(DTdir) #create DT folder if it doesn't exist
+		os.makedirs(DTdir) #created DT folder if it doesn't exist
 		print 'made ' + DTdir
 	if not os.path.exists(os.path.join(DTdir, 'gdat.hdf5')):
 		print 'making ' + os.path.join(DTdir, 'gdat.hdf5')
