@@ -12,7 +12,7 @@ def CARcython(np.ndarray elecs, np.ndarray chRank, np.ndarray groups, int Ngroup
 	f = h5py.File(gdatfilename,'a')
 	gdat = f['gdat']
 	gdat_CAR = f['CAR']['gdat']
-	CAR_group = f['CAR']['CAR_group'] #why stays zero?
+	CAR_group = f['CAR']['CAR_group']
 
 	cdef size_t e, cnt
 	cdef np.ndarray CAR = np.zeros((Ngroups, max(gdat.shape)))
@@ -27,28 +27,31 @@ def CARcython(np.ndarray elecs, np.ndarray chRank, np.ndarray groups, int Ngroup
 			CAR[groups[e],:] = CAR[groups[e],:] + gdat_CAR[e,:]
 	
 	# divide by number of valid elecs in each group (to get CAR per group)
-	for cnt in np.arange(Ngroups):
+	cnt = 0
+	while cnt < Ngroups:
 		if np.sum(chRank[np.flatnonzero(groups == cnt)]):
 			CAR[cnt,:] = np.divide(CAR[cnt,:], np.sum(chRank[np.flatnonzero(groups == cnt)]))
+		cnt+=1
 
 	# remove the relevant group CAR from each elec
-	for e in np.arange(numelecs):
+	e = 0
+	while e < numelecs:
 		gdat_CAR[e,:] = gdat_CAR[e,:] - CAR[groups[e],:]
 		if chRank[e]:
 			CAR_all = CAR_all + gdat_CAR[e,:]
+		e+=1
 	
 	# calculate CAR for all elecs
 	CAR_all = np.divide(CAR_all, len(elecs))
 	
 	# add grouped CAR to class (without removing total CAR for all elecs)
-	CAR_group = gdat_CAR.copy() #copy it?
+	CAR_group = gdat_CAR
 
 	# remove total CAR for all electrodes (ungrouped)
 	for e in np.arange(numelecs):
 		gdat_CAR[e,:] = gdat_CAR[e,:] - CAR_all
 
+	#f['CAR']['CAR_group'] = gdat_CAR
+
 	f.close()
 	return CAR_all, CAR
-
-# pull three loops out into sep functions - only they will be in cython and compiled. write them in a separate file completely - in setup.py run them and compile them separately. can just feed it in the file object to the gdat or the filepath. in cython code can open the db and do for item in db. from comiled cython code import blah, on this file object/path do whatever.
-# write cython code (code.pyx) where do cdef to define function, run cython on it one time (definied in setup.py) - makes code.co file - then in here (python file) from code import function. now function is a python function (reads it in from code.so) or look at numexpr.

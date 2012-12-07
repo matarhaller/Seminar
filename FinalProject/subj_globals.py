@@ -31,9 +31,14 @@ def create_CAR(dataobj, grouping):
 
 	# preallocate gdat_CAR  gdat_CAR_group
 	# add to gdat file as subgroups
-	subgroup = f.create_group("CAR")
-	gdat_CAR = subgroup.create_dataset('gdat', data = gdat)	#keep gdat name within CAR subgroup so that can be easily accessed later.
-	CAR_group = subgroup.create_dataset('CAR_group', shape = gdat.shape, dtype = gdat.dtype)
+	try:
+		subgroup = f.create_group("CAR")
+		gdat_CAR = subgroup.create_dataset('gdat', data = gdat)	#keep gdat name within CAR subgroup so that can be easily accessed later.
+		CAR_group = subgroup.create_dataset('CAR_group', shape = gdat.shape, dtype = gdat.dtype)
+	except ValueError:
+		print 'CAR already run previously. Delete subgroups and try again'
+		return
+
 
 	# define size 
 	numelecs = min(gdat.shape) # total number of electrodes
@@ -49,7 +54,7 @@ def create_CAR(dataobj, grouping):
 	groups = groups.astype(int)
 
 	#call cythonCAR for actual math: (makes it a little faster, but not much because still accessing python objects inside)
-	CAR_all, CAR = CARcython(elecs, chRank, groups, Ngroups, numelecs, dataobj.gdat)
+	CAR_all, CAR = CARcython(dataobj.elecs, chRank, groups, Ngroups, numelecs, dataobj.gdat)
 
 	#put data in hdf5 file
 	CAR = subgroup.create_dataset('CAR', data = CAR)
@@ -111,12 +116,12 @@ def analytic_amp(dataobj, elec, f1=70, f2=150):
 	#load in gdat data
 	f = h5py.File(dataobj.gdat,'a')
 	try:
-		gdat = f['CAR']['gdat_CAR']
+		gdat = f['CAR']['gdat']
 	except:
 		print "won't do hilbert until calculate CAR"
 		return
 
-	band = gdat_CAR[elec,:] #1 electrode's data
+	band = gdat[elec,:] #1 electrode's data
 
 	subgroup = f.create_group("hilbert")
 	name = 'e'+str(elec)
@@ -190,6 +195,7 @@ class Subject():
 		Resamples Events ANsrate to match data srate
 		Updates Events ANsrate.
 		"""
+		""
 		## need to implement resampling for data itself too - upfirdn requires making filter.
 		labels = {'stimonset','stimoffset','responset','respoffset'}
 		for k in self.Events.keys():
@@ -206,6 +212,7 @@ class Subject():
  		Resamples srate to srate_new. 
  		based on matlab's resample function - might just wwant to take every other point (because still above nyquist)
  		input must be a vector - need to run it on 1 electrode (not on whole gdat)
+ 		"""
  		"""
  		x = gdat[e,:] #need to define gdat
 
@@ -252,6 +259,7 @@ class Subject():
 		gdat[e,:] = y
  
  		self.logit('resampled electrod %i from %f to %f' %(elec, srate, srate_new))
+ 		"""
 
 	def calc_acc(self):
 		"""
@@ -286,13 +294,12 @@ class Subject():
 		self.logit('saved %s' %(fullfilename))
 
 	def makeTrialsMTX(self,elec,raw, Params):
-		#baseline corrects and makes a trialsmtx (not by conditions)
-		#takes hilbert or something.
-		#does it for an electrode, then stores it. before recalculates, checks that hasn't already been calculated
-		#currently drops ambiguous stimuli - need to decide if to keep and how
-		#makes a new file TrialsMTX.hdf5 with the dataMTX for each elec
-		#need to implement by conditions
 		"""
+		Makes a dataMTX of trials x timepoints locked to onset of cue. Baseline corrects data.
+		Will only run one time per electrode. Instead of recalculating, checks that the electrode hasn't been run before.
+		Currently drops ambiguous stimuli - need to decide if to keep and how.
+		Makes a new file TrialsMTX.hdf5 with the dataMTX per electrode.
+
 		INPUT:
 			elec - electrode number
 			raw - if to calculate from raw trace ('CAR') or 'from hilbert' 
@@ -302,7 +309,7 @@ class Subject():
 		# load data file
 		f = h5py.File(self.gdat,'a')
 		try:
-			gdat = f[raw]['gdat_CAR'] #need to rerun CAR so gdat_CAR can be gdat
+			gdat = f[raw]['gdat'] 
 			band = gdat[elec,:]
 		except:
 			print 'either ' + raw + " not supported as 'raw' argument or elec out of bounds"
@@ -352,16 +359,12 @@ class Subject():
 		#conditions = np.unique(cond)
 
 		#define onset times per trial
-		#st_tm = self.Events['stimonset'][trials]+Params['st']
-		st_tm = self.Events['stimonset'][trials]+st
-		#en_tm = self.Events['stimonset'][trials]+Params['en']
-		en_tm = self.Events['stimonset'][trials]+en
+		st_tm = self.Events['cueonset'][trials]+st
+		en_tm = self.Events['cueonset'][trials]+en
 
 		#define baseline per trial
-		#bl_st_tm = self.Events['stimonset'][trials]+Params['bl_st']
-		bl_st_tm = self.Events['stimonset'][trials]+bl_st
-		bl_en_tm = self.Events['stimonset'][trials]+bl_en
-		#bl_en_tm = self.Events['stimonset'][trials]+Params['bl_en']
+		bl_st_tm = self.Events['cueonset'][trials]+bl_st
+		bl_en_tm = self.Events['cueonset'][trials]+bl_en
 
 		#make data matrix (baseline corrected)
 		for i, x in enumerate(st_tm):
@@ -370,8 +373,6 @@ class Subject():
 			dataMTX[i,:] = band[window] - np.mean(band[blwindow])
 
 		self.logit('created dataMTX for electrode %i' %(elec))
-		f.close()
-		g.close()
 		return dataMTX
 
 	def plot_trace(self, elec, raw = 'CAR', Params = dict()):

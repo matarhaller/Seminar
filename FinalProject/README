@@ -7,18 +7,20 @@ ST26.py - either creates or loads the an instantiation of the Subject class with
 
 visualize_brain.py - calls on ST26.py to plot activity on cortex with electrodes 
 
+You will need to edit pathtodata in ST26.py to match where your data is.
+Also in ST26.py edit DTdir to match where you want the analyses to go.
+
 from the command line run:
 python setup.py build_ext -i
 python visualize_brain.py
 
-You will need to edit pathtodata in ST26.py to match where your data is.
-Also in ST26.py edit DTdir to match where you want the analyses to go.
+clicking on an electrode will plot a figure showing its mean raw data trace across trials.
 
-clicking on an electrode will plot a figure showing its mean activity across trials
+A log of all preprocessing steps is kept in the data folder.
 
 future steps:
-- implement create_CAR and analytic_amp methods in cython (make them faster)
-- make analytic amplitude use fftw (faster) - and then it will be usable
+- implement analytic_amp methods in cython
+- make analytic amplitude use fftw
 - implement option for plotting traces by conditions
 - implement single trial images
 - make it so can load arbitrary subject without changing imported module in visual_brain.py (make it an argument to the function) use arg parse to give it from the command line
