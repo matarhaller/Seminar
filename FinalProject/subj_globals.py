@@ -60,39 +60,6 @@ def create_CAR(dataobj, grouping):
 	CAR = subgroup.create_dataset('CAR', data = CAR)
 	CAR_all = subgroup.create_dataset('CAR_all', data= CAR_all)
 
-
-
-	"""
-	# subtract the mean from each electrode (including bad)
-	# then sum gdat by group only for valid electrodes
-	for e in dataobj.elecs:
-		gdat_CAR[e,:] = gdat[e,:] - np.mean(gdat[e,:]) 
-		if chRank[e]: # valid elec
-			CAR[groups[e],:] = CAR[groups[e],:] + gdat_CAR[e,:]
-
-	# divide by number of valid elecs in each group (to get CAR per group)
-	for cnt in np.arange(Ngroups):
-		if np.sum(chRank[np.flatnonzero(groups == cnt)]): 
-			#only if there is at least 1 valid elec in that group
-			CAR[cnt,:] = np.divide(CAR[cnt,:], np.sum(chRank[np.flatnonzero(groups == cnt)]))
-
-	# remove the relevant group CAR from each elec
-	for e in np.arange(numelecs):
-		gdat_CAR[e,:] = gdat_CAR[e,:] - CAR[groups[e],:]
-		if chRank[e]:
-			CAR_all = CAR_all + gdat_CAR[e,:] #sum CAR for valid elecs
-
-	# calculate CAR for all elecs
-	CAR_all = np.divide(CAR_all, len(dataobj.elecs))
-
-	# add grouped CAR to class (without removing total CAR for all elecs)
-	gdat_CAR_group = gdat_CAR 
-
-	# remove total CAR for all electrodes (ungrouped)
-	for e in np.arange(numelecs):
-		gdat_CAR[e,:] = gdat_CAR[e,:] - CAR_all
-	"""
-
 	#close file
 	f.close()
 
@@ -102,7 +69,7 @@ def create_CAR(dataobj, grouping):
 
 def analytic_amp(dataobj, elec, f1=70, f2=150):
 	"""
-	filters signal using a flat gaussian then does the hilbert transform.
+	filters signal using a flat gaussian then do hilbert transform.
 	returns analytic amplitude.
 	runs on 1 electrode
 	slow because of fft and ifft - need to fix (use fftw)
@@ -309,7 +276,7 @@ class Subject():
 		# load data file
 		f = h5py.File(self.gdat,'a')
 		try:
-			gdat = f[raw]['gdat'] 
+			gdat = f[raw]['gdat'] #works for CAR, hilbert has different structure - need to adjust.
 			band = gdat[elec,:]
 		except:
 			print 'either ' + raw + " not supported as 'raw' argument or elec out of bounds"
@@ -380,8 +347,7 @@ class Subject():
 		plots trace for the trial duration using TrialsMTX
 		INPUT:
 			elec - electrode number
-			raw - if to calculate from raw trace ('CAR') or 'from hilbert' 
-				(optional, default 'CAR')
+			raw - if to calculate from raw trace ('CAR') or from hilbert ('hilbert') - optional, default 'CAR'
 			Params - dictionary of onset/offset times for trial and for baseline. (optional)
 		"""
 		#default Params
@@ -399,10 +365,9 @@ class Subject():
 		bl_st = int(round(Params['bl_st'] / 1000 * self.srate))
 		bl_en = int(round(Params['bl_en'] / 1000 * self.srate))
 		
-		#x = np.arange(Params['st'], Params['en'])
 		x = np.arange(st, en)
 
-		plot_tp = 200 / 1000 * self.srate
+		plot_tp = 200 / 1000 * self.srate #ticks every 200 ms
 		cue = 500 / 1000 * self.srate
 		
 		f, ax = plt.subplots(1,1)
@@ -414,10 +379,8 @@ class Subject():
 
 		ax.plot(x, np.mean(dataMTX,0), linewidth = 2, color = 'blue')
 
-		#ax.set_xlim(Params['st'], Params['en'])
 		ax.set_xlim(st, en)
 		ax.xaxis.set_ticklabels(['', '0', '','500', '', '1000', '', '1500', '', '2000','','2500','', '3000'],minor=False)
-		#ax.xaxis.set_ticks(np.arange(Params['st'],Params['en'],plot_tp))
 		ax.xaxis.set_ticks(np.arange(st, en, plot_tp))
 		ax.xaxis.set_tick_params(labelsize = 14)
 		ax.yaxis.set_tick_params(labelsize=14)
