@@ -359,12 +359,12 @@ class Subject():
 		#conditions = np.unique(cond)
 
 		#define onset times per trial
-		st_tm = self.Events['cueonset'][trials]+st
-		en_tm = self.Events['cueonset'][trials]+en
+		st_tm = self.Events['stimonset'][trials]+st
+		en_tm = self.Events['stimonset'][trials]+en
 
 		#define baseline per trial
-		bl_st_tm = self.Events['cueonset'][trials]+bl_st
-		bl_en_tm = self.Events['cueonset'][trials]+bl_en
+		bl_st_tm = self.Events['stimonset'][trials]+bl_st
+		bl_en_tm = self.Events['stimonset'][trials]+bl_en
 
 		#make data matrix (baseline corrected)
 		for i, x in enumerate(st_tm):
