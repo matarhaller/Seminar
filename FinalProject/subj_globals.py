@@ -4,7 +4,6 @@ import matplotlib.pyplot as plt
 import os
 import math
 import scipy.io
-import cython
 import datetime
 import cPickle
 import h5py
@@ -180,6 +179,7 @@ class Subject():
  		based on matlab's resample function - might just wwant to take every other point (because still above nyquist)
  		input must be a vector - need to run it on 1 electrode (not on whole gdat)
  		"""
+ 		print 'method not completed. no resmpling done.'
  		"""
  		x = gdat[e,:] #need to define gdat
 
@@ -299,8 +299,8 @@ class Subject():
 
 		#get size/shape arguments
 		Ntrials = len(trials)
-		#triallength = Params['en'] - Params['st']
 		triallength = en - st
+		cue = 500 / 1000 * self.srate
 
 		# create data:
 		# if dataMTX already exists,  load it. if not, then calculate.
@@ -326,12 +326,12 @@ class Subject():
 		#conditions = np.unique(cond)
 
 		#define onset times per trial
-		st_tm = self.Events['stimonset'][trials]+st
-		en_tm = self.Events['stimonset'][trials]+en
+		st_tm = self.Events['stimonset'][trials]+st-cue
+		en_tm = self.Events['stimonset'][trials]+en-cue
 
 		#define baseline per trial
-		bl_st_tm = self.Events['stimonset'][trials]+bl_st
-		bl_en_tm = self.Events['stimonset'][trials]+bl_en
+		bl_st_tm = self.Events['stimonset'][trials]+bl_st-cue
+		bl_en_tm = self.Events['stimonset'][trials]+bl_en-cue
 
 		#make data matrix (baseline corrected)
 		for i, x in enumerate(st_tm):
@@ -367,7 +367,7 @@ class Subject():
 		
 		x = np.arange(st, en)
 
-		plot_tp = 200 / 1000 * self.srate #ticks every 200 ms
+		plot_tp = 250 / 1000 * self.srate #ticks every 250 ms
 		cue = 500 / 1000 * self.srate
 		
 		f, ax = plt.subplots(1,1)
@@ -380,7 +380,7 @@ class Subject():
 		ax.plot(x, np.mean(dataMTX,0), linewidth = 2, color = 'blue')
 
 		ax.set_xlim(st, en)
-		ax.xaxis.set_ticklabels(['', '0', '','500', '', '1000', '', '1500', '', '2000','','2500','', '3000'],minor=False)
+		ax.xaxis.set_ticklabels(['0', '','500', '', '1000', '', '1500', '', '2000','','2500','', '3000'],minor=False)
 		ax.xaxis.set_ticks(np.arange(st, en, plot_tp))
 		ax.xaxis.set_tick_params(labelsize = 14)
 		ax.yaxis.set_tick_params(labelsize=14)
